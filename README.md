@@ -26,6 +26,21 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## 📚 项目文档
+
+### 开发者文档 (`md/`)
+
+- [环境配置与启动指南](./md/环境配置与启动指南.md) - 环境变量配置和启动方式
+- [Docker使用指南](./md/Docker使用指南.md) - Docker 环境配置和使用
+- [Prisma使用指南](./md/Prisma使用指南.md) - Prisma ORM 使用说明
+- [集成指南](./md/集成指南.md) - NestJS 项目库集成方案
+
+### 项目笔记 (`notes/`)
+
+- [环境变量配置集成笔记](./notes/环境变量配置集成笔记.md) - 详细的集成步骤和搭建指南
+- [Docker集成笔记](./notes/Docker集成笔记.md) - Docker 环境的详细集成步骤
+- [Prisma集成笔记](./notes/Prisma集成笔记.md) - Prisma 的详细集成步骤
+
 ## Project setup
 
 ```bash

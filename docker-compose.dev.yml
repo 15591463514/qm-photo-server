@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库服务（开发环境）
+  mysql-dev:
+    image: mysql:8.0
+    container_name: qm-photo-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - '${DB_PORT}:3306'
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+    networks:
+      - qm-photo-network-dev
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-u',
+          'root',
+          '-p${DB_PASSWORD}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data-dev:
+    driver: local
+
+networks:
+  qm-photo-network-dev:
+    driver: bridge

@@ -36,11 +36,12 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # dotenv environment variable files
-.env
+# 注意：.env、.env.development 和 .env.production 应该提交到 Git（作为模板）
+# 但包含敏感信息的本地覆盖文件不应该提交
+.env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.local
 
 # temp directory
 .temp

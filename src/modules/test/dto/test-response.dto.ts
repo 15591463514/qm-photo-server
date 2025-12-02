@@ -1,0 +1,45 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class TestResponseDto {
+  @ApiProperty({
+    description: '测试数据 ID',
+    example: 1,
+  })
+  id: number;
+
+  @ApiProperty({
+    description: '创建时间',
+    example: '2025-11-25T16:51:30.797Z',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: '更新时间',
+    example: '2025-11-25T16:51:30.797Z',
+  })
+  updatedAt: Date;
+
+  @ApiProperty({
+    description: '测试名称',
+    example: '测试数据',
+  })
+  name: string;
+
+  @ApiPropertyOptional({
+    description: '测试描述',
+    example: '这是一个测试描述',
+  })
+  description?: string | null;
+
+  @ApiProperty({
+    description: '状态',
+    example: true,
+  })
+  status: boolean;
+
+  @ApiPropertyOptional({
+    description: '删除时间（软删除）',
+    example: null,
+  })
+  deletedAt?: Date | null;
+}
