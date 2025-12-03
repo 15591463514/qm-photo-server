@@ -1,11 +1,13 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from 'nestjs-prisma';
+import { RedisModule } from '@nestjs-modules/ioredis';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from 'nestjs-prisma';
 import appConfig from '../config/app.config';
 import databaseConfig from '../config/database.config';
+import redisConfig, { RedisConfig } from '../config/redis.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
 
 /**
@@ -19,9 +21,24 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
      */
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig],
+      load: [appConfig, databaseConfig, redisConfig],
       envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
       expandVariables: true,
+    }),
+    /**
+     * Redis 模块
+     */
+    RedisModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const redis = configService.get<RedisConfig>('redis');
+        return {
+          type: 'single',
+          url: `redis://${redis.password}@${redis.host}:${redis.port}/${redis.db}`,
+          options: redis,
+        };
+      },
     }),
     /**
      * Prisma 模块
@@ -75,6 +92,6 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
       useClass: ResponseTransformInterceptor,
     },
   ],
-  exports: [ConfigModule, PrismaModule],
+  exports: [ConfigModule, PrismaModule, RedisModule],
 })
 export class SharedModule {}

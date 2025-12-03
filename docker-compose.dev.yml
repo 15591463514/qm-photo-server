@@ -34,8 +34,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis 服务（开发环境）
+  redis-dev:
+    image: redis:7-alpine
+    container_name: qm-photo-redis-dev
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --appendonly yes
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data-dev:/data
+    networks:
+      - qm-photo-network-dev
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-}', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
 volumes:
   mysql-data-dev:
+    driver: local
+  redis-data-dev:
     driver: local
 
 networks:
