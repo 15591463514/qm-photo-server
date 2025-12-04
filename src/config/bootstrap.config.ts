@@ -1,4 +1,8 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
@@ -28,4 +32,14 @@ export function setupSwagger(app: INestApplication): void {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+}
+
+/**
+ * 配置 API 版本控制
+ */
+export function setupApiVersioning(app: INestApplication): void {
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
 }

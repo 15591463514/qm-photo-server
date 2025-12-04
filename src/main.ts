@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { setupCors, setupSwagger } from './config/bootstrap.config';
+import {
+  setupCors,
+  setupSwagger,
+  setupApiVersioning,
+} from './config/bootstrap.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,11 +16,12 @@ async function bootstrap() {
 
   // 配置应用
   setupCors(app, configService);
+  setupApiVersioning(app);
   setupSwagger(app);
 
   await app.listen(port);
 
-  console.log(`🚀 应用运行在: http://localhost:${port}`);
+  console.log(`🚀 应用运行在: http://localhost:${port}/v1`);
   console.log(`📦 环境: ${nodeEnv}`);
   console.log(`📚 API 文档: http://localhost:${port}/api`);
 }
