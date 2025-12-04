@@ -1,10 +1,11 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CacheModule as CacheManagerModule } from '@nestjs/cache-manager';
 import { PrismaModule } from 'nestjs-prisma';
-import { RedisModule } from '@nestjs-modules/ioredis';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from 'nestjs-prisma';
+import { createKeyv } from '@keyv/redis';
 import appConfig from '../config/app.config';
 import databaseConfig from '../config/database.config';
 import redisConfig, { RedisConfig } from '../config/redis.config';
@@ -26,19 +27,29 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
       expandVariables: true,
     }),
     /**
-     * Redis 模块
+     * Cache Manager 模块（使用 Redis 作为存储，基于 keyv）
      */
-    RedisModule.forRootAsync({
+    CacheManagerModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
         const redis = configService.get<RedisConfig>('redis');
+        // 构建 Redis 连接 URL
+        const redisUrl = `redis://${redis.host}:${redis.port}/${redis.db}`;
+
+        // 使用 createKeyv 创建 Keyv 实例，并设置命名空间
+        const keyvStore = createKeyv(redisUrl, {
+          namespace: redis.keyPrefix,
+        });
+
+        console.log(redisUrl);
+
         return {
-          type: 'single',
-          url: `redis://${redis.password}@${redis.host}:${redis.port}/${redis.db}`,
-          options: redis,
+          stores: [keyvStore], // 使用 stores 数组（cache-manager v6+ 的要求）
+          ttl: redis.ttl * 1000, // 默认过期时间（毫秒）
         };
       },
+      isGlobal: true,
     }),
     /**
      * Prisma 模块
@@ -92,6 +103,6 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
       useClass: ResponseTransformInterceptor,
     },
   ],
-  exports: [ConfigModule, PrismaModule, RedisModule],
+  exports: [ConfigModule, PrismaModule, CacheManagerModule],
 })
 export class SharedModule {}

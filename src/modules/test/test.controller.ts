@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,7 @@ import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { QueryTestDto } from './dto/query-test.dto';
+import { CacheTTL, CacheInterceptor, CacheKey } from '@nestjs/cache-manager';
 
 @ApiTags('test')
 @Controller('test')
@@ -60,9 +62,37 @@ export class TestController {
     type: [TestResponseDto],
     isPage: true,
   })
+  @UseInterceptors(CacheInterceptor) // 必须添加此拦截器，@CacheTTL 才能生效
+  @CacheTTL(30 * 1000) // 缓存 30 秒，缓存键会自动根据 URL 和查询参数生成
   findPaginated(@Query(PaginationPipe) query: QueryTestDto) {
-    console.info('query', query);
     return this.testService.findPaginated(query);
+  }
+
+  @Get('cache')
+  @ApiOperation({
+    summary: '测试缓存',
+    description: '测试缓存',
+  })
+  @ApiResult({
+    status: 200,
+    description: '查询成功',
+  })
+  async testCache() {
+    return this.testService.testCache();
+  }
+
+  @Get('deleted/all')
+  @ApiOperation({
+    summary: '查询已删除的数据',
+    description: '获取所有已软删除的测试数据列表',
+  })
+  @ApiResult({
+    status: 200,
+    description: '查询成功',
+    type: [TestResponseDto],
+  })
+  findDeleted() {
+    return this.testService.findDeleted();
   }
 
   @Get(':id')
@@ -116,20 +146,6 @@ export class TestController {
   @ApiResult({ status: 404, description: '数据不存在' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.testService.remove(id);
-  }
-
-  @Get('deleted/all')
-  @ApiOperation({
-    summary: '查询已删除的数据',
-    description: '获取所有已软删除的测试数据列表',
-  })
-  @ApiResult({
-    status: 200,
-    description: '查询成功',
-    type: [TestResponseDto],
-  })
-  findDeleted() {
-    return this.testService.findDeleted();
   }
 
   @Post(':id/restore')

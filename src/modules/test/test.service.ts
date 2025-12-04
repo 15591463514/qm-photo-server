@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'nestjs-prisma';
 import { CreateTestDto } from './dto/create-test.dto';
@@ -7,10 +7,15 @@ import { TestResponseDto } from './dto/test-response.dto';
 import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
 import { PaginatedDto } from '@/common/dto/paginated.dto';
 import { QueryTestDto } from './dto/query-test.dto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class TestService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   /**
    * 创建测试数据
@@ -199,5 +204,18 @@ export class TestService {
     return plainToInstance(TestResponseDto, result, {
       excludeExtraneousValues: false,
     });
+  }
+
+  /**
+   * 测试缓存
+   */
+  async testCache() {
+    const cache = await this.cacheManager.get<string>('token');
+    if (cache) {
+      return { token: cache };
+    }
+    const token = new Date().toLocaleString();
+    await this.cacheManager.set('token', token, 60 * 1000);
+    return { token: token };
   }
 }

@@ -5,13 +5,26 @@
 ### 1. 安装依赖
 
 ```bash
-pnpm add @nestjs-modules/ioredis ioredis
+# 基础依赖
+pnpm add @nestjs/cache-manager cache-manager
+
+# Redis 存储适配器（cache-manager@6+ 需要使用 keyv）
+pnpm add @keyv/redis keyv
 ```
 
 **版本：**
 
-- `@nestjs-modules/ioredis`: 2.0.2
-- `ioredis`: 5.8.2
+- `@nestjs/cache-manager`: 3.0.1（NestJS 官方缓存模块）
+- `cache-manager`: 7.2.5（缓存管理器，v6+ 版本）
+- `@keyv/redis`: 5.1.4（Redis 存储适配器，基于 keyv）
+- `keyv`: 5.5.4（键值存储抽象层）
+
+**说明：**
+
+- `@nestjs/cache-manager` 是 NestJS 官方提供的缓存模块，基于 `cache-manager` 构建
+- `cache-manager@6+` 需要使用 `keyv` 作为存储抽象层
+- `@keyv/redis` 提供 Redis 作为 keyv 的存储后端
+- 这种架构提供了更好的灵活性和可扩展性
 
 ### 2. 创建 Redis 配置文件
 
@@ -34,14 +47,16 @@ const redisConfig = registerAs('redis', () => ({
   password: process.env.REDIS_PASSWORD || '',
   db: parseInt(process.env.REDIS_DB || '0', 10),
   keyPrefix: process.env.REDIS_KEY_PREFIX || 'qm_photo:',
-  // 连接选项
+  // Cache Manager 配置
+  ttl: parseInt(process.env.REDIS_TTL || '3600', 10), // 默认过期时间（秒）
+  max: parseInt(process.env.REDIS_MAX || '100', 10), // 最大缓存项数
+  // ioredis 连接选项
   lazyConnect: process.env.REDIS_LAZY_CONNECT === 'true',
   maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES || '3', 10),
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
-  // 集群配置（如果需要）
   enableReadyCheck: process.env.REDIS_ENABLE_READY_CHECK !== 'false',
   enableOfflineQueue: process.env.REDIS_ENABLE_OFFLINE_QUEUE !== 'false',
 }));
@@ -55,15 +70,17 @@ export default redisConfig;
 - 使用 `ReturnType<typeof redisConfig>` 自动推导类型，避免手动维护接口
 - 配置项都有默认值，确保配置的健壮性
 - `retryStrategy` 实现指数退避重试策略
+- `ttl` 和 `max` 是 Cache Manager 的配置项
 
-### 3. 在 SharedModule 中集成 Redis 模块
+### 3. 在 SharedModule 中集成 Cache Manager 模块
 
 **文件位置：** `src/shared/shared.module.ts`
 
 **功能：**
 
-- 将 Redis 模块配置为全局模块
+- 将 Cache Manager 模块配置为全局模块
 - 使用 `ConfigService` 动态读取配置
+- 使用 `cache-manager-ioredis-yet` 作为 Redis 存储后端
 - 支持密码认证和连接选项
 
 **关键代码：**
@@ -71,7 +88,9 @@ export default redisConfig;
 ```typescript
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { RedisModule } from '@nestjs-modules/ioredis';
+import { CacheModule } from '@nestjs/cache-manager';
+import Keyv from 'keyv';
+import KeyvRedis from '@keyv/redis';
 import redisConfig, { RedisConfig } from '../config/redis.config';
 
 @Global()
@@ -84,18 +103,29 @@ import redisConfig, { RedisConfig } from '../config/redis.config';
       envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
       expandVariables: true,
     }),
-    // Redis 模块
-    RedisModule.forRootAsync({
+    // Cache Manager 模块（使用 Redis 作为存储，基于 keyv）
+    CacheModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const redis = configService.get<RedisConfig>('redis');
+        // 构建 Redis 连接 URL
+        const redisUrl = `redis://${redis.password ? `:${redis.password}@` : ''}${redis.host}:${redis.port}/${redis.db}`;
+
+        // 使用 keyv 和 @keyv/redis 作为存储后端
+        const keyvRedis = new KeyvRedis(redisUrl);
+
         return {
-          type: 'single',
-          url: `redis://${redis.password}@${redis.host}:${redis.port}/${redis.db}`,
-          options: redis,
+          store: new Keyv({
+            store: keyvRedis,
+            namespace: redis.keyPrefix, // 使用 keyPrefix 作为命名空间
+            ttl: redis.ttl * 1000, // 转换为毫秒
+          }),
+          ttl: redis.ttl * 1000, // 默认过期时间（毫秒）
+          max: redis.max, // 最大缓存项数
         };
       },
+      isGlobal: true,
     }),
   ],
   exports: [ConfigModule, RedisModule],
@@ -107,8 +137,9 @@ export class SharedModule {}
 
 - 使用 `forRootAsync` 异步配置，支持依赖注入
 - 通过 `configService.get<RedisConfig>('redis')` 获取类型安全的配置
-- `options: redis` 直接传递配置对象，简化配置
-- Redis 模块设置为全局模块，其他模块无需导入即可使用
+- 使用 `keyv` 和 `@keyv/redis` 作为存储后端（cache-manager@6+ 的要求）
+- `namespace` 用于设置键前缀，替代原来的 `keyPrefix`
+- Cache Manager 模块设置为全局模块，其他模块无需导入即可使用
 
 ### 4. 配置环境变量
 
@@ -132,8 +163,10 @@ REDIS_KEY_PREFIX=qm_photo:
 # 【Redis配置】
 # Redis 密码
 REDIS_PASSWORD=123456
-# Redis 连接超时时间（毫秒）
-REDIS_CONNECT_TIMEOUT=10000
+# Redis 默认过期时间（秒）
+REDIS_TTL=3600
+# Redis 最大缓存项数
+REDIS_MAX=100
 # Redis 延迟连接
 REDIS_LAZY_CONNECT=false
 # Redis 最大重试次数
@@ -150,8 +183,10 @@ REDIS_ENABLE_OFFLINE_QUEUE=true
 # 【Redis配置】
 # Redis 密码
 REDIS_PASSWORD=YOUR_REDIS_PASSWORD
-# Redis 连接超时时间（毫秒）
-REDIS_CONNECT_TIMEOUT=10000
+# Redis 默认过期时间（秒）
+REDIS_TTL=3600
+# Redis 最大缓存项数
+REDIS_MAX=100
 # Redis 延迟连接
 REDIS_LAZY_CONNECT=false
 # Redis 最大重试次数
@@ -171,7 +206,8 @@ REDIS_ENABLE_OFFLINE_QUEUE=true
 | `REDIS_PASSWORD`             | Redis 密码（可选）               | 空字符串    |
 | `REDIS_DB`                   | Redis 数据库编号                 | `0`         |
 | `REDIS_KEY_PREFIX`           | 键前缀（所有键会自动添加此前缀） | `qm_photo:` |
-| `REDIS_CONNECT_TIMEOUT`      | 连接超时时间（毫秒）             | `10000`     |
+| `REDIS_TTL`                  | 默认过期时间（秒）               | `3600`      |
+| `REDIS_MAX`                  | 最大缓存项数                     | `100`       |
 | `REDIS_LAZY_CONNECT`         | 延迟连接（首次使用时连接）       | `false`     |
 | `REDIS_MAX_RETRIES`          | 最大重试次数                     | `3`         |
 | `REDIS_ENABLE_READY_CHECK`   | 启用就绪检查                     | `true`      |
@@ -257,31 +293,34 @@ volumes:
 - 健康检查使用密码认证
 - 数据卷持久化 Redis 数据
 
-### 6. 在服务中使用 Redis
+### 6. 在服务中使用 Cache Manager
 
 **基本使用：**
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { InjectRedis } from '@nestjs-modules/ioredis';
-import Redis from 'ioredis';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class YourService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   async someMethod() {
-    // 设置值
-    await this.redis.set('key', 'value');
+    // 设置缓存（使用默认 TTL）
+    await this.cacheManager.set('key', 'value');
 
-    // 设置值并指定过期时间（秒）
-    await this.redis.setex('key', 3600, 'value');
+    // 设置缓存并指定过期时间（毫秒）
+    await this.cacheManager.set('key', 'value', 3600 * 1000);
 
-    // 获取值
-    const value = await this.redis.get('key');
+    // 获取缓存
+    const value = await this.cacheManager.get<string>('key');
 
-    // 删除键
-    await this.redis.del('key');
+    // 删除缓存
+    await this.cacheManager.del('key');
+
+    // 清空所有缓存
+    await this.cacheManager.reset();
   }
 }
 ```
@@ -289,29 +328,33 @@ export class YourService {
 **缓存模式示例：**
 
 ```typescript
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+
 @Injectable()
 export class CacheService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   /**
-   * 获取或设置缓存
+   * 获取或设置缓存（最常用的缓存模式）
    */
   async getOrSetCache<T>(
     key: string,
     fetchFn: () => Promise<T>,
-    ttl: number = 3600,
+    ttl?: number,
   ): Promise<T> {
     // 尝试从缓存获取
-    const cached = await this.redis.get(key);
-    if (cached) {
-      return JSON.parse(cached) as T;
+    const cached = await this.cacheManager.get<T>(key);
+    if (cached !== undefined) {
+      return cached;
     }
 
     // 缓存未命中，执行获取函数
     const data = await fetchFn();
 
-    // 设置缓存
-    await this.redis.setex(key, ttl, JSON.stringify(data));
+    // 设置缓存（ttl 单位为毫秒）
+    await this.cacheManager.set(key, data, ttl ? ttl * 1000 : undefined);
 
     return data;
   }
@@ -319,39 +362,83 @@ export class CacheService {
   /**
    * 更新缓存
    */
-  async updateCache(key: string, data: any, ttl: number = 3600): Promise<void> {
-    await this.redis.setex(key, ttl, JSON.stringify(data));
+  async updateCache(key: string, data: any, ttl?: number): Promise<void> {
+    await this.cacheManager.set(key, data, ttl ? ttl * 1000 : undefined);
   }
 
   /**
    * 删除缓存
    */
   async invalidateCache(key: string): Promise<void> {
-    await this.redis.del(key);
+    await this.cacheManager.del(key);
   }
 
   /**
-   * 批量删除缓存（使用模式匹配）
+   * 清空所有缓存
    */
-  async invalidateCachePattern(pattern: string): Promise<void> {
-    const keys = await this.redis.keys(pattern);
-    if (keys.length > 0) {
-      await this.redis.del(...keys);
-    }
+  async resetCache(): Promise<void> {
+    await this.cacheManager.reset();
+  }
+
+  /**
+   * 检查缓存是否存在
+   */
+  async hasCache(key: string): Promise<boolean> {
+    const value = await this.cacheManager.get(key);
+    return value !== undefined;
   }
 }
 ```
 
-**分布式锁示例：**
+**使用装饰器缓存方法结果：**
 
 ```typescript
-@Injectable()
-export class LockService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
+import { Injectable } from '@nestjs/common';
+import { CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
-  /**
-   * 获取分布式锁
-   */
+@Injectable()
+export class UserService {
+  // 使用装饰器自动缓存方法结果
+  @CacheKey('user-list')
+  @CacheTTL(3600) // 缓存 1 小时
+  async getUserList(): Promise<User[]> {
+    // 这个方法的结果会被自动缓存
+    return await this.userRepository.find();
+  }
+}
+```
+
+**注意：** Cache Manager 主要提供简单的 key-value 缓存接口，适合缓存对象、字符串等数据。如果需要使用 Redis 的高级功能（如 Hash、List、Set、Sorted Set、分布式锁等），需要直接使用 ioredis 客户端。
+
+**如果需要直接使用 ioredis：**
+
+可以同时配置 ioredis 客户端用于高级功能：
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import Redis from 'ioredis';
+
+@Injectable()
+export class AdvancedRedisService {
+  // 需要单独配置 ioredis 连接
+  private redis: Redis;
+
+  constructor() {
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+    });
+  }
+
+  // 使用 Hash
+  async setHash(key: string, field: string, value: string): Promise<number> {
+    return await this.redis.hset(key, field, value);
+  }
+
+  // 使用分布式锁
   async acquireLock(
     key: string,
     value: string,
@@ -359,120 +446,6 @@ export class LockService {
   ): Promise<boolean> {
     const result = await this.redis.set(key, value, 'EX', ttl, 'NX');
     return result === 'OK';
-  }
-
-  /**
-   * 释放分布式锁
-   */
-  async releaseLock(key: string, value: string): Promise<void> {
-    // Lua 脚本确保只删除自己设置的锁
-    const script = `
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("del", KEYS[1])
-      else
-        return 0
-      end
-    `;
-    await this.redis.eval(script, 1, key, value);
-  }
-
-  /**
-   * 使用示例
-   */
-  async doSomethingWithLock() {
-    const lockKey = 'lock:resource:123';
-    const lockValue = `${Date.now()}-${Math.random()}`;
-    const acquired = await this.acquireLock(lockKey, lockValue, 30);
-
-    if (acquired) {
-      try {
-        // 执行业务逻辑
-      } finally {
-        await this.releaseLock(lockKey, lockValue);
-      }
-    }
-  }
-}
-```
-
-**常用操作示例：**
-
-```typescript
-@Injectable()
-export class RedisOperationsService {
-  constructor(@InjectRedis() private readonly redis: Redis) {}
-
-  // ========== 字符串操作 ==========
-  async setString(key: string, value: string, ttl?: number): Promise<void> {
-    if (ttl) {
-      await this.redis.setex(key, ttl, value);
-    } else {
-      await this.redis.set(key, value);
-    }
-  }
-
-  async getString(key: string): Promise<string | null> {
-    return await this.redis.get(key);
-  }
-
-  // ========== Hash 操作 ==========
-  async setHash(key: string, field: string, value: string): Promise<number> {
-    return await this.redis.hset(key, field, value);
-  }
-
-  async getHash(key: string, field: string): Promise<string | null> {
-    return await this.redis.hget(key, field);
-  }
-
-  async getAllHash(key: string): Promise<Record<string, string>> {
-    return await this.redis.hgetall(key);
-  }
-
-  // ========== List 操作 ==========
-  async pushList(key: string, ...values: string[]): Promise<number> {
-    return await this.redis.lpush(key, ...values);
-  }
-
-  async popList(key: string): Promise<string | null> {
-    return await this.redis.rpop(key);
-  }
-
-  async getListRange(
-    key: string,
-    start: number,
-    end: number,
-  ): Promise<string[]> {
-    return await this.redis.lrange(key, start, end);
-  }
-
-  // ========== Set 操作 ==========
-  async addSet(key: string, ...members: string[]): Promise<number> {
-    return await this.redis.sadd(key, ...members);
-  }
-
-  async getSetMembers(key: string): Promise<string[]> {
-    return await this.redis.smembers(key);
-  }
-
-  async isSetMember(key: string, member: string): Promise<number> {
-    return await this.redis.sismember(key, member);
-  }
-
-  // ========== Sorted Set 操作 ==========
-  async addSortedSet(
-    key: string,
-    score: number,
-    member: string,
-  ): Promise<number> {
-    return await this.redis.zadd(key, score, member);
-  }
-
-  async getSortedSetRange(
-    key: string,
-    start: number,
-    end: number,
-  ): Promise<string[]> {
-    return await this.redis.zrange(key, start, end);
   }
 }
 ```
