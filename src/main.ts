@@ -21,8 +21,9 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 应用运行在: http://localhost:${port}/v1`);
+  console.log(`🚀 应用运行在: http://localhost:${port}/api/v1`);
   console.log(`📦 环境: ${nodeEnv}`);
-  console.log(`📚 API 文档: http://localhost:${port}/api`);
+  console.log(`📚 API 文档: http://localhost:${port}/doc`);
+  console.log(`🔢 API 版本控制已启用，默认版本: v1`);
 }
 bootstrap();
