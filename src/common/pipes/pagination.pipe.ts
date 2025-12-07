@@ -8,7 +8,7 @@ import { PaginationDto } from '../dto/pagination.dto';
  *
  * 功能：
  * 1. 验证分页参数
- * 2. 将 page 和 pageSize 转换为 skip 和 take
+ * 2. 将 current 和 size 转换为 skip 和 take
  * 3. 添加额外的分页信息到请求对象
  */
 @Injectable()
@@ -21,65 +21,44 @@ export class PaginationPipe implements PipeTransform {
     // 获取分页参数，设置默认值
     // 注意：查询参数可能是字符串，需要转换为数字
     // 如果值为空字符串、null、undefined，使用默认值
-    let page: number;
-    if (
-      value?.page !== undefined &&
-      value?.page !== null &&
-      value?.page !== ''
-    ) {
-      const parsedPage = Number(value.page);
-      // 如果转换后是有效数字，使用转换后的值；否则使用默认值
-      page =
-        Number.isInteger(parsedPage) &&
-        !isNaN(parsedPage) &&
-        isFinite(parsedPage)
-          ? parsedPage
+    let current: number = PAGINATION_CONSTANTS.DEFAULT_PAGE;
+    const currentVal = value.current ?? value.page;
+    if (currentVal !== undefined && currentVal !== null && currentVal !== '') {
+      const parsed = Number(currentVal);
+      current =
+        Number.isInteger(parsed) && parsed > 0
+          ? parsed
           : PAGINATION_CONSTANTS.DEFAULT_PAGE;
-    } else {
-      page = PAGINATION_CONSTANTS.DEFAULT_PAGE;
     }
 
-    let pageSize: number;
-    if (
-      value?.pageSize !== undefined &&
-      value?.pageSize !== null &&
-      value?.pageSize !== ''
-    ) {
-      const parsedPageSize = Number(value.pageSize);
-      // 如果转换后是有效数字，使用转换后的值；否则使用默认值
-      pageSize =
-        Number.isInteger(parsedPageSize) &&
-        !isNaN(parsedPageSize) &&
-        isFinite(parsedPageSize)
-          ? parsedPageSize
-          : defaultPageSize;
-    } else {
-      pageSize = defaultPageSize;
+    let size: number = defaultPageSize;
+    const sizeVal = value.size ?? value.pageSize;
+    if (sizeVal !== undefined && sizeVal !== null && sizeVal !== '') {
+      const parsed = Number(sizeVal);
+      size = Number.isInteger(parsed) && parsed > 0 ? parsed : defaultPageSize;
     }
 
     // 验证参数范围
-    if (page < 1) {
-      throw new BadRequestException('页码必须大于 0');
+    if (current < 1) {
+      throw new BadRequestException('当前页码必须大于 0');
     }
-    if (pageSize < 1 || pageSize > maxPageSize) {
+    if (size < 1 || size > maxPageSize) {
       throw new BadRequestException(`每页数量必须在 1-${maxPageSize} 之间`);
     }
 
     // 计算数据库查询参数
-    // 确保 skip 和 take 都是有效的非负整数
-    const skip = (page - 1) * pageSize;
-    const take = pageSize;
+    const skip = (current - 1) * size;
+    const take = size;
 
     // 创建分页参数对象
     const paginationParams: PaginationDto = {
       skip,
       take,
-      page,
-      pageSize,
+      current,
+      size,
     };
 
     // 将分页参数扁平化添加到请求对象中，供 Service 使用
-    // 扁平化展开，方便直接使用 skip、take 等字段
     return paginationParams;
   }
 }

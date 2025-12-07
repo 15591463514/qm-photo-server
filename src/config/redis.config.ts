@@ -5,7 +5,7 @@ const redisConfig = registerAs('redis', () => ({
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   password: process.env.REDIS_PASSWORD || '',
   db: parseInt(process.env.REDIS_DB || '0', 10),
-  keyPrefix: process.env.REDIS_KEY_PREFIX || 'qm_photo:',
+  keyPrefix: process.env.REDIS_KEY_PREFIX || 'qm_photo',
   // Cache Manager 配置
   ttl: parseInt(process.env.REDIS_TTL || '3600', 10), // 默认过期时间（秒）
   max: parseInt(process.env.REDIS_MAX || '100', 10), // 最大缓存项数

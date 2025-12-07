@@ -2,7 +2,7 @@ import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CacheModule as CacheManagerModule } from '@nestjs/cache-manager';
 import { PrismaModule } from 'nestjs-prisma';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from 'nestjs-prisma';
 import { createKeyv } from '@keyv/redis';
@@ -10,6 +10,8 @@ import appConfig from '../config/app.config';
 import databaseConfig from '../config/database.config';
 import redisConfig, { RedisConfig } from '../config/redis.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
 
 /**
  * 共享模块 - 包含全局配置和公共服务
@@ -40,6 +42,7 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
         // 使用 createKeyv 创建 Keyv 实例，并设置命名空间
         const keyvStore = createKeyv(redisUrl, {
           namespace: redis.keyPrefix,
+          keyPrefixSeparator: '',
         });
 
         console.log(redisUrl);
@@ -101,6 +104,22 @@ import { ResponseTransformInterceptor } from '@/common/interceptors/response-tra
     {
       provide: APP_INTERCEPTOR,
       useClass: ResponseTransformInterceptor,
+    },
+    /**
+     * 全局 JWT 认证守卫
+     * 所有接口默认需要 JWT 认证，除非使用 @Public() 装饰器标记
+     */
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    /**
+     * 全局角色守卫
+     * 验证用户是否拥有所需角色（通过 @Roles() 装饰器指定）
+     */
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
   exports: [ConfigModule, PrismaModule, CacheManagerModule],

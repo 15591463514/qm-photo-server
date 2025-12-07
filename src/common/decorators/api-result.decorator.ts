@@ -55,24 +55,17 @@ export const ApiResult = <TModel extends Type<any>>(
   // 处理数组类型
   if (Array.isArray(type)) {
     if (isPage) {
-      // 分页响应：{ items: [], meta: {} }
+      // 分页响应：{ records: [], current, size, total }
       dataProp = {
         type: 'object',
         properties: {
-          items: {
+          records: {
             type: 'array',
             items: { $ref: getSchemaPath(type[0]) },
           },
-          meta: {
-            type: 'object',
-            properties: {
-              itemCount: { type: 'number', default: 0 },
-              totalItems: { type: 'number', default: 0 },
-              itemsPerPage: { type: 'number', default: 0 },
-              totalPages: { type: 'number', default: 0 },
-              currentPage: { type: 'number', default: 0 },
-            },
-          },
+          current: { type: 'number', default: 1 },
+          size: { type: 'number', default: 10 },
+          total: { type: 'number', default: 0 },
         },
       };
     } else {

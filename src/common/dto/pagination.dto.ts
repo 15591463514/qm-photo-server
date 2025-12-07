@@ -9,15 +9,15 @@ import { PAGINATION_CONSTANTS } from '../constants/pagination.constants';
  */
 export class PaginationDto {
   @ApiPropertyOptional({
-    description: '页码，从 1 开始',
+    description: '当前页码，从 1 开始',
     default: PAGINATION_CONSTANTS.DEFAULT_PAGE,
     minimum: 1,
   })
   @Type(() => Number)
-  @IsInt({ message: '页码必须是整数' })
-  @Min(1, { message: '页码必须大于 0' })
+  @IsInt({ message: '当前页码必须是整数' })
+  @Min(1, { message: '当前页码必须大于 0' })
   @IsOptional()
-  page?: number = PAGINATION_CONSTANTS.DEFAULT_PAGE;
+  current?: number = PAGINATION_CONSTANTS.DEFAULT_PAGE;
 
   @ApiPropertyOptional({
     description: '每页数量',
@@ -32,7 +32,7 @@ export class PaginationDto {
     message: `每页数量不能超过 ${PAGINATION_CONSTANTS.MAX_PAGE_SIZE}`,
   })
   @IsOptional()
-  pageSize?: number = PAGINATION_CONSTANTS.DEFAULT_PAGE_SIZE;
+  size?: number = PAGINATION_CONSTANTS.DEFAULT_PAGE_SIZE;
 
   /* mysql忽略条数 */
   public skip: number;
@@ -43,5 +43,5 @@ export class PaginationDto {
 
 export type PaginationParams = Pick<
   PaginationDto,
-  'page' | 'pageSize' | 'skip' | 'take'
+  'current' | 'size' | 'skip' | 'take'
 >;

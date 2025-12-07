@@ -1,5 +1,6 @@
 // Prisma Schema 文件
 // 使用 MySQL 数据库
+// 根据前端文档设计的完整数据库结构
 
 generator client {
   provider = "prisma-client-js"
@@ -11,12 +12,163 @@ datasource db {
 }
 
 model Test {
-  id        Int      @id @default(autoincrement())
-  name      String
+  id          Int       @id @default(autoincrement())
+  name        String
   description String?
-  status    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  status      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 }
 
+// ==================== 用户表 ====================
+model User {
+  id         Int       @id @default(autoincrement())
+  userName   String    @unique @map("user_name") @db.VarChar(50)
+  password   String    @db.VarChar(255)
+  nickName   String?   @map("nick_name") @db.VarChar(50)
+  email      String?   @db.VarChar(100)
+  avatar     String?   @db.VarChar(500)
+  userPhone  String?   @map("user_phone") @db.VarChar(20)
+  userGender String?   @default("unknown") @map("user_gender") @db.VarChar(10) // 'male', 'female', 'unknown'
+  status     String    @default("1") @db.VarChar(10) // '1'-启用, '2'-禁用
+  createBy   Int?      @map("create_by")
+  createTime DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateBy   Int?      @map("update_by")
+  updateTime DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+  remark     String?   @db.VarChar(500)
+
+  // 关系
+  userRoles UserRole[]
+
+  @@index([status], name: "idx_status")
+  @@index([createTime], name: "idx_create_time")
+  @@map("users")
+}
+
+// ==================== 角色表 ====================
+model Role {
+  roleId      Int       @id @default(autoincrement()) @map("role_id")
+  roleName    String    @map("role_name") @db.VarChar(50)
+  roleCode    String    @unique @map("role_code") @db.VarChar(50)
+  description String?   @db.VarChar(500)
+  enabled     Boolean   @default(true)
+  createTime  DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateTime  DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+
+  // 关系
+  userRoles       UserRole[]
+  roleMenus       RoleMenu[]
+  roleMenuButtons RoleMenuButton[]
+
+  @@map("roles")
+}
+
+// ==================== 菜单表 ====================
+model Menu {
+  id           Int       @id @default(autoincrement())
+  parentId     Int       @default(0) @map("parent_id")
+  name         String    @db.VarChar(100)
+  path         String    @db.VarChar(200)
+  component    String?   @db.VarChar(500)
+  title        String    @db.VarChar(100)
+  icon         String?   @db.VarChar(100)
+  isHide       Boolean   @default(false) @map("is_hide")
+  isHideTab    Boolean   @default(false) @map("is_hide_tab")
+  link         String?   @db.VarChar(500)
+  isIframe     Boolean   @default(false) @map("is_iframe")
+  keepAlive    Boolean   @default(false) @map("keep_alive")
+  isFirstLevel Boolean   @default(false) @map("is_first_level")
+  fixedTab     Boolean   @default(false) @map("fixed_tab")
+  activePath   String?   @map("active_path") @db.VarChar(200)
+  isFullPage   Boolean   @default(false) @map("is_full_page")
+  sortOrder    Int       @default(0) @map("sort_order")
+  status       String    @default("1") @db.VarChar(10) // '1'-启用, '2'-禁用
+  createTime   DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateTime   DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+
+  // 自关联关系（父子菜单）
+  parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Menu[] @relation("MenuHierarchy")
+
+  // 关系
+  menuButtons     MenuButton[]
+  roleMenus       RoleMenu[]
+  roleMenuButtons RoleMenuButton[]
+
+  @@index([parentId], name: "idx_parent_id")
+  @@index([status], name: "idx_status")
+  @@index([sortOrder], name: "idx_sort_order")
+  @@map("menus")
+}
+
+// ==================== 菜单权限按钮表 ====================
+model MenuButton {
+  id         Int      @id @default(autoincrement())
+  menuId     Int      @map("menu_id")
+  title      String   @db.VarChar(100)
+  authMark   String   @map("auth_mark") @db.VarChar(100)
+  sortOrder  Int      @default(0) @map("sort_order")
+  createTime DateTime @default(now()) @map("create_time") @db.DateTime(0)
+
+  // 关系
+  menu            Menu             @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  roleMenuButtons RoleMenuButton[]
+
+  @@unique([menuId, authMark], name: "uk_menu_auth")
+  @@index([menuId], name: "idx_menu_id")
+  @@map("menu_buttons")
+}
+
+// ==================== 用户角色关联表 ====================
+model UserRole {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  roleId     Int      @map("role_id")
+  createTime DateTime @default(now()) @map("create_time") @db.DateTime(0)
+
+  // 关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+
+  @@unique([userId, roleId], name: "uk_user_role")
+  @@index([userId], name: "idx_user_id")
+  @@index([roleId], name: "idx_role_id")
+  @@map("user_roles")
+}
+
+// ==================== 角色菜单关联表 ====================
+model RoleMenu {
+  id         Int      @id @default(autoincrement())
+  roleId     Int      @map("role_id")
+  menuId     Int      @map("menu_id")
+  createTime DateTime @default(now()) @map("create_time") @db.DateTime(0)
+
+  // 关系
+  role Role @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, menuId], name: "uk_role_menu")
+  @@index([roleId], name: "idx_role_id")
+  @@index([menuId], name: "idx_menu_id")
+  @@map("role_menus")
+}
+
+// ==================== 角色菜单按钮关联表 ====================
+model RoleMenuButton {
+  id         Int      @id @default(autoincrement())
+  roleId     Int      @map("role_id")
+  menuId     Int      @map("menu_id")
+  buttonId   Int      @map("button_id")
+  createTime DateTime @default(now()) @map("create_time") @db.DateTime(0)
+
+  // 关系
+  role   Role       @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  menu   Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  button MenuButton @relation(fields: [buttonId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, menuId, buttonId], name: "uk_role_menu_button")
+  @@index([roleId], name: "idx_role_id")
+  @@index([menuId], name: "idx_menu_id")
+  @@map("role_menu_buttons")
+}

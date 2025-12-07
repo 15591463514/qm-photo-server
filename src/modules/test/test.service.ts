@@ -40,7 +40,7 @@ export class TestService {
   async findPaginated(
     query: QueryTestDto,
   ): Promise<PaginatedDto<TestResponseDto>> {
-    const { skip, take, page, pageSize, name, status } = query;
+    const { skip, take, current, size, name, status } = query;
 
     // 构建查询条件
     const where: any = {
@@ -74,7 +74,7 @@ export class TestService {
     ]);
 
     // 转换数据（即使 results 为空数组也能正常处理）
-    const items = results.map((result) =>
+    const records = results.map((result) =>
       plainToInstance(TestResponseDto, result, {
         excludeExtraneousValues: false,
       }),
@@ -82,8 +82,8 @@ export class TestService {
 
     // 创建分页响应（即使没有数据也返回空的分页结果）
     return createPaginatedResponse(
-      items,
-      { skip, take, page, pageSize },
+      records,
+      { skip, take, current, size },
       totalItems,
     );
   }
