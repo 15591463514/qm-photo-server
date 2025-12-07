@@ -24,6 +24,7 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserInfoResponseDto } from './dto/user-info-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
@@ -136,5 +137,31 @@ export class UserController {
   @ApiResult({ status: 404, description: '用户不存在' })
   async remove(@Param('id') id: string) {
     return this.userService.remove(id);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '更改密码',
+    description: '更改当前登录用户的密码',
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResult({
+    status: 200,
+    description: '密码修改成功',
+    type: Object,
+    example: { message: '密码修改成功' },
+  })
+  @ApiResult({
+    status: 400,
+    description: '请求参数错误（新密码和确认密码不一致、新密码与当前密码相同）',
+  })
+  @ApiResult({ status: 401, description: '未授权（当前密码不正确）' })
+  @ApiResult({ status: 404, description: '用户不存在' })
+  async changePassword(
+    @CurrentUser('userId') userId: number,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.userService.changePassword(userId, changePasswordDto);
   }
 }

@@ -3,25 +3,37 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'nestjs-prisma';
 import * as bcrypt from 'bcrypt';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserInfoResponseDto } from './dto/user-info-response.dto';
 import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
 import { PaginatedDto } from '@/common/dto/paginated.dto';
 import { Prisma } from '@prisma/client';
+import {
+  USER_VERSION_KEY,
+  getRedisKey,
+} from '@/common/constants/redis-key.constants';
 
 /**
  * 用户服务
  */
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   /**
    * 获取当前用户信息（包含角色和按钮权限）
@@ -339,5 +351,79 @@ export class UserService {
         excludeExtraneousValues: false,
       },
     );
+  }
+
+  /**
+   * 更改密码
+   * @param userId 用户ID
+   * @param changePasswordDto 更改密码 DTO
+   * @returns 成功消息
+   */
+  async changePassword(
+    userId: number,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    // 验证新密码和确认密码是否一致
+    if (changePasswordDto.newPassword !== changePasswordDto.confirmPassword) {
+      throw new BadRequestException('新密码和确认密码不一致');
+    }
+
+    // 查询用户
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    // 验证旧密码
+    const isOldPasswordValid = await bcrypt.compare(
+      changePasswordDto.oldPassword,
+      user.password,
+    );
+
+    if (!isOldPasswordValid) {
+      throw new UnauthorizedException('当前密码不正确');
+    }
+
+    // 检查新密码是否与旧密码相同
+    const isSamePassword = await bcrypt.compare(
+      changePasswordDto.newPassword,
+      user.password,
+    );
+
+    if (isSamePassword) {
+      throw new BadRequestException('新密码不能与当前密码相同');
+    }
+
+    // 加密新密码
+    const hashedNewPassword = await bcrypt.hash(
+      changePasswordDto.newPassword,
+      10,
+    );
+
+    // 获取当前密码版本号
+    const currentVersion = await this.cacheManager.get<string>(
+      getRedisKey(USER_VERSION_KEY, userId),
+    );
+    const newVersion = currentVersion ? parseInt(currentVersion, 10) + 1 : 1;
+
+    // 更新密码和密码版本号
+    await Promise.all([
+      // 更新数据库中的密码
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      }),
+      // 更新 Redis 中的密码版本号（使旧 Token 失效）
+      this.cacheManager.set(
+        getRedisKey(USER_VERSION_KEY, userId),
+        newVersion.toString(),
+        7 * 24 * 60 * 60 * 1000, // 7天过期时间
+      ),
+    ]);
+
+    return { message: '密码修改成功' };
   }
 }
