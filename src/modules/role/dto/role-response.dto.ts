@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { utcToLocal } from '@/common/helpers/date.helper';
 
 /**
  * 角色响应 DTO
@@ -36,14 +38,16 @@ export class RoleResponseDto {
   enabled: boolean;
 
   @ApiProperty({
-    description: '创建时间',
-    example: '2025-01-01T00:00:00.000Z',
+    description: '创建时间（本地时间，UTC+8）',
+    example: '2025-01-01 08:00:00',
   })
-  createTime: Date;
+  @Transform(({ value }) => utcToLocal(value))
+  createTime: string;
 
   @ApiPropertyOptional({
-    description: '更新时间',
-    example: '2025-01-01T00:00:00.000Z',
+    description: '更新时间（本地时间，UTC+8）',
+    example: '2025-01-01 08:00:00',
   })
-  updateTime?: Date | null;
+  @Transform(({ value }) => utcToLocal(value))
+  updateTime?: string | null;
 }

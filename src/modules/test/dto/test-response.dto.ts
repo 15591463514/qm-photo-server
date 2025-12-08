@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { utcToLocal } from '@/common/helpers/date.helper';
 
 export class TestResponseDto {
   @ApiProperty({
@@ -8,16 +10,18 @@ export class TestResponseDto {
   id: number;
 
   @ApiProperty({
-    description: '创建时间',
-    example: '2025-11-25T16:51:30.797Z',
+    description: '创建时间（本地时间，UTC+8）',
+    example: '2025-11-25 16:51:30',
   })
-  createdAt: Date;
+  @Transform(({ value }) => utcToLocal(value))
+  createdAt: string;
 
   @ApiProperty({
-    description: '更新时间',
-    example: '2025-11-25T16:51:30.797Z',
+    description: '更新时间（本地时间，UTC+8）',
+    example: '2025-11-25 16:51:30',
   })
-  updatedAt: Date;
+  @Transform(({ value }) => utcToLocal(value))
+  updatedAt: string;
 
   @ApiProperty({
     description: '测试名称',
@@ -38,8 +42,9 @@ export class TestResponseDto {
   status: boolean;
 
   @ApiPropertyOptional({
-    description: '删除时间（软删除）',
+    description: '删除时间（软删除，本地时间，UTC+8）',
     example: null,
   })
-  deletedAt?: Date | null;
+  @Transform(({ value }) => utcToLocal(value))
+  deletedAt?: string | null;
 }
