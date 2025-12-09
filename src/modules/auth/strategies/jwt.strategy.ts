@@ -31,7 +31,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @returns 用户信息（附加到 request.user）
    */
   async validate(request: Request, payload: JwtPayload) {
-    console.log('JWT Strategy validate 被调用', { payload });
     const { userId, pv } = payload;
 
     // 从请求头提取完整 Token
@@ -40,7 +39,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // 验证 Token 有效性（包括 Token 一致性、密码版本号等）
     const user = await this.authService.validateToken(userId, pv || 1, token);
-    console.log('validateToken 返回的用户信息:', user);
     // 返回值会被 JwtAuthGuard.handleRequest() 接收
     return user || { userId };
   }

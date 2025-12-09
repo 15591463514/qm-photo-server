@@ -95,4 +95,13 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   remark?: string;
+
+  @ApiPropertyOptional({
+    description: '角色编码列表',
+    example: ['admin', 'user'],
+    type: [String],
+  })
+  @IsString({ each: true, message: '角色编码必须是字符串数组' })
+  @IsOptional()
+  roleCodes?: string[];
 }

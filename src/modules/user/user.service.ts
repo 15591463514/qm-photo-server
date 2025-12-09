@@ -155,6 +155,13 @@ export class UserService {
     const [results, totalItems] = await Promise.all([
       this.prisma.user.findMany({
         where,
+        include: {
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
+        },
         orderBy: {
           createTime: 'desc',
         },
@@ -166,14 +173,18 @@ export class UserService {
       }),
     ]);
 
-    // 转换数据（排除密码）
+    // 转换数据（排除密码，提取角色编码）
     const records = results.map((result) => {
-      const { password: _, ...userWithoutPassword } = result;
+      const { password: _, userRoles, ...userWithoutPassword } = result;
+      // 提取角色编码数组
+      const roleCodes = userRoles?.map((ur) => ur.role.roleCode) || [];
+
       return plainToInstance(
         UserResponseDto,
         {
           ...userWithoutPassword,
           id: userWithoutPassword.id,
+          userRoles: roleCodes,
         },
         {
           excludeExtraneousValues: false,
@@ -226,6 +237,11 @@ export class UserService {
         remark: createUserDto.remark,
       },
     });
+
+    // 绑定角色（如果提供了角色编码）
+    if (createUserDto.roleCodes && createUserDto.roleCodes.length > 0) {
+      await this.bindUserRoles(result.id, createUserDto.roleCodes);
+    }
 
     const { password: _, ...userWithoutPassword } = result;
     return plainToInstance(
@@ -302,6 +318,19 @@ export class UserService {
       data: updateData,
     });
 
+    // 更新角色绑定（如果提供了角色编码）
+    if (updateUserDto.roleCodes !== undefined) {
+      // 先删除所有现有角色关联
+      await this.prisma.userRole.deleteMany({
+        where: { userId: userIdInt },
+      });
+
+      // 如果提供了角色编码数组，创建新的角色关联
+      if (updateUserDto.roleCodes.length > 0) {
+        await this.bindUserRoles(userIdInt, updateUserDto.roleCodes);
+      }
+    }
+
     const { password: _, ...userWithoutPassword } = result;
     return plainToInstance(
       UserResponseDto,
@@ -313,6 +342,58 @@ export class UserService {
         excludeExtraneousValues: false,
       },
     );
+  }
+
+  /**
+   * 绑定用户角色
+   * @param userId 用户ID
+   * @param roleCodes 角色编码数组
+   */
+  private async bindUserRoles(
+    userId: number,
+    roleCodes: string[],
+  ): Promise<void> {
+    if (!roleCodes || roleCodes.length === 0) {
+      return;
+    }
+
+    // 根据角色编码查找角色ID
+    const roles = await this.prisma.role.findMany({
+      where: {
+        roleCode: {
+          in: roleCodes,
+        },
+      },
+      select: {
+        roleId: true,
+        roleCode: true,
+      },
+    });
+
+    if (roles.length === 0) {
+      throw new NotFoundException('未找到指定的角色');
+    }
+
+    // 检查是否所有角色编码都找到了
+    const foundRoleCodes = roles.map((r) => r.roleCode);
+    const notFoundRoleCodes = roleCodes.filter(
+      (code) => !foundRoleCodes.includes(code),
+    );
+
+    if (notFoundRoleCodes.length > 0) {
+      throw new NotFoundException(
+        `未找到以下角色编码: ${notFoundRoleCodes.join(', ')}`,
+      );
+    }
+
+    // 创建用户角色关联
+    await this.prisma.userRole.createMany({
+      data: roles.map((role) => ({
+        userId,
+        roleId: role.roleId,
+      })),
+      skipDuplicates: true, // 跳过重复的关联
+    });
   }
 
   /**
