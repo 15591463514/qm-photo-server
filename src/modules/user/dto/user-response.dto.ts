@@ -88,4 +88,11 @@ export class UserResponseDto {
     example: '这是备注信息',
   })
   remark?: string | null;
+
+  @ApiPropertyOptional({
+    description: '角色编码列表',
+    example: ['admin', 'user'],
+    type: [String],
+  })
+  userRoles?: string[];
 }

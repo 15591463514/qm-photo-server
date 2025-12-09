@@ -58,7 +58,19 @@ export class PaginationPipe implements PipeTransform {
       size,
     };
 
-    // 将分页参数扁平化添加到请求对象中，供 Service 使用
-    return paginationParams;
+    // 提取其他查询参数（排除分页相关字段）
+    const {
+      current: _current,
+      page: _page,
+      size: _size,
+      pageSize: _pageSize,
+      ...otherParams
+    } = value;
+
+    // 将分页参数和其他查询参数合并返回
+    return {
+      ...paginationParams,
+      ...otherParams,
+    };
   }
 }
