@@ -172,3 +172,33 @@ model RoleMenuButton {
   @@index([menuId], name: "idx_menu_id")
   @@map("role_menu_buttons")
 }
+
+// ==================== 字典表（扁平化设计）====================
+model Dict {
+  id         Int       @id @default(autoincrement())
+  typeCode   String    @map("type_code") @db.VarChar(100) // 字典类型编码（如：user_status, user_gender）
+  typeName   String    @map("type_name") @db.VarChar(100) // 字典类型名称（如：用户状态、用户性别）
+  typeStatus String    @default("1") @map("type_status") @db.VarChar(10) // 字典类型状态 '1'-启用, '2'-禁用
+  dataLabel  String    @map("data_label") @db.VarChar(100) // 字典标签（显示名称，如：启用、禁用）
+  dataValue  String    @map("data_value") @db.VarChar(100) // 字典值（如：1、2、male、female）
+  sortOrder  Int       @default(0) @map("sort_order") // 排序
+  status     String    @default("1") @db.VarChar(10) // '1'-启用, '2'-禁用（字典数据状态）
+  tagStyle   String?   @map("tag_style") @db.VarChar(100) // 标签样式（用于前端样式，如：success、danger）
+  isDefault  Boolean   @default(false) @map("is_default") // 是否默认值
+  createBy   Int?      @map("create_by") // 创建人ID
+  createTime DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateBy   Int?      @map("update_by") // 更新人ID
+  updateTime DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+  remark     String?   @db.VarChar(500) // 备注
+
+  // 唯一约束：同一类型下字典值必须唯一
+  @@unique([typeCode, dataValue], name: "uk_type_value")
+  // 唯一约束：同一类型下排序必须唯一
+  @@unique([typeCode, sortOrder], name: "uk_type_sort")
+  @@index([typeCode], name: "idx_type_code")
+  @@index([status], name: "idx_status")
+  @@index([typeStatus], name: "idx_type_status")
+  @@index([sortOrder], name: "idx_sort_order")
+  @@index([createTime], name: "idx_create_time")
+  @@map("dicts")
+}

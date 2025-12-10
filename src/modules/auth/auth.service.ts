@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'nestjs-prisma';
-import { Prisma } from '@prisma/client';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import * as bcrypt from 'bcrypt';
@@ -19,6 +18,7 @@ import {
 } from '@/common/constants/redis-key.constants';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
+import { EnableStatus } from '@/common/constants/enums';
 
 /**
  * 认证服务
@@ -55,7 +55,7 @@ export class AuthService {
     }
 
     // 验证用户状态
-    if (user.status !== '1') {
+    if (user.status !== EnableStatus.ENABLED) {
       throw new UnauthorizedException('用户已被禁用');
     }
 
@@ -247,7 +247,7 @@ export class AuthService {
       },
     });
 
-    if (!user || user.status !== '1') {
+    if (!user || user.status !== EnableStatus.ENABLED) {
       throw new UnauthorizedException('用户不存在或已被禁用');
     }
 
@@ -295,7 +295,7 @@ export class AuthService {
       data: {
         userName: registerDto.username,
         password: hashedPassword,
-        status: '1', // 默认启用
+        status: EnableStatus.ENABLED, // 默认启用
         userGender: 'unknown', // 默认未知
       },
     });

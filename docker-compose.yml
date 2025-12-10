@@ -76,7 +76,7 @@ services:
       - '${PORT}:3000'
     environment:
       - NODE_ENV=${NODE_ENV}
-      - PORT=3000
+      - PORT=3008
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USERNAME=${DB_USERNAME}

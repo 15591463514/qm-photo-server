@@ -24,6 +24,7 @@ import {
   USER_VERSION_KEY,
   getRedisKey,
 } from '@/common/constants/redis-key.constants';
+import { EnableStatus } from '@/common/constants/enums';
 
 /**
  * 用户服务
@@ -53,7 +54,7 @@ export class UserService {
       },
     });
 
-    if (!user || user.status !== '1') {
+    if (!user || user.status !== EnableStatus.ENABLED) {
       throw new NotFoundException('用户不存在或已被禁用');
     }
 
@@ -232,7 +233,7 @@ export class UserService {
         avatar: createUserDto.avatar,
         userPhone: createUserDto.userPhone,
         userGender: createUserDto.userGender || 'unknown',
-        status: createUserDto.status || '1',
+        status: createUserDto.status || EnableStatus.ENABLED,
         createBy: currentUserId,
         remark: createUserDto.remark,
       },
