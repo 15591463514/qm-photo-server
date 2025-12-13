@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { RoleModule } from './modules/role/role.module';
 import { DictModule } from './modules/dict/dict.module';
+import { MenuModule } from './modules/menu/menu.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DictModule } from './modules/dict/dict.module';
     UserModule,
     RoleModule,
     DictModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

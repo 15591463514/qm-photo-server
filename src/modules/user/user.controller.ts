@@ -27,19 +27,23 @@ import { QueryUserDto } from './dto/query-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserInfoResponseDto } from './dto/user-info-response.dto';
+import { MenuResponseDto } from '@/modules/menu/dto/menu-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
-@ApiTags('user')
+@ApiTags('用户管理')
 @Controller('user')
 @UseGuards(JwtAuthGuard) // 所有接口都需要 JWT 认证
 @ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  /**
+   * 获取当前用户信息
+   */
   @Get('info')
   @ApiOperation({
     summary: '获取当前用户信息',
@@ -58,6 +62,30 @@ export class UserController {
     return this.userService.getUserInfo(userId);
   }
 
+  /**
+   * 获取当前用户有权限的菜单
+   */
+  @Get('menus')
+  @ApiOperation({
+    summary: '获取当前用户有权限的菜单',
+    description: '获取当前登录用户可访问的菜单树，用于前端动态路由注册',
+  })
+  @ApiExtraModels(MenuResponseDto)
+  @ApiResult({
+    status: 200,
+    description: '获取成功',
+    type: [MenuResponseDto],
+  })
+  @ApiResult({ status: 401, description: '未授权' })
+  async getUserMenus(
+    @CurrentUser('roles') roles: string[],
+  ): Promise<MenuResponseDto[]> {
+    return this.userService.getUserMenus(roles);
+  }
+
+  /**
+   * 获取用户列表（分页）
+   */
   @Get('list')
   @ApiOperation({
     summary: '获取用户列表（分页）',
@@ -76,6 +104,9 @@ export class UserController {
     return this.userService.findPaginated(query);
   }
 
+  /**
+   * 创建用户
+   */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -98,6 +129,9 @@ export class UserController {
     return this.userService.create(createUserDto, currentUserId);
   }
 
+  /**
+   * 更新用户
+   */
   @Put(':id')
   @ApiOperation({
     summary: '更新用户',
@@ -121,6 +155,9 @@ export class UserController {
     return this.userService.update(id, updateUserDto, currentUserId);
   }
 
+  /**
+   * 删除用户
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -139,6 +176,9 @@ export class UserController {
     return this.userService.remove(id);
   }
 
+  /**
+   * 更改密码
+   */
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

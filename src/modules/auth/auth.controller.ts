@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Get,
-  Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -22,12 +21,15 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 
-@ApiTags('auth')
+@ApiTags('认证')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Public() // 公开接口，无需认证
+  /**
+   * 用户注册
+   */
+  @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '用户注册' })
@@ -45,18 +47,23 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
-  @Public() // 公开接口，无需认证
-  @UseGuards(LocalAuthGuard) // 使用 Local Strategy 验证用户名和密码
+  /**
+   * 用户登录
+   */
+  @Public()
+  @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiBody({ type: LoginDto })
   async login(@Request() req): Promise<LoginResponseDto> {
-    // req.user 由 Local Strategy 的 validate 方法返回
     return this.authService.login(req.user);
   }
 
-  @Public() // 公开接口
+  /**
+   * 刷新 Token
+   */
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '刷新 Token' })
@@ -65,7 +72,10 @@ export class AuthController {
     return this.authService.refresh(refreshDto.refreshToken);
   }
 
-  @UseGuards(JwtAuthGuard) // 需要 JWT 认证
+  /**
+   * 获取当前用户信息
+   */
+  @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: '获取当前用户信息' })
   @ApiBearerAuth()
@@ -73,15 +83,15 @@ export class AuthController {
     return user;
   }
 
-  @UseGuards(JwtAuthGuard) // 需要 JWT 认证
+  /**
+   * 用户登出
+   */
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登出' })
   @ApiBearerAuth()
-  async logout(
-    @CurrentUser('userId') userId: number,
-    @Headers('Authorization') authorization: string,
-  ) {
+  async logout(@CurrentUser('userId') userId: number) {
     await this.authService.logout(userId);
     return { message: '登出成功' };
   }

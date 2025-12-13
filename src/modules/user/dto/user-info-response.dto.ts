@@ -43,8 +43,8 @@ export class UserInfoResponseDto {
   roles: string[];
 
   @ApiProperty({
-    description: '按钮权限列表',
-    example: ['add', 'edit', 'delete', 'view'],
+    description: '按钮权限列表（格式：menuName:authMark）',
+    example: ['user:add', 'user:edit', 'user:delete', 'role:view'],
     type: [String],
   })
   buttons: string[];

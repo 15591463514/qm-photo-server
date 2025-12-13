@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'nestjs-prisma';
@@ -14,11 +15,13 @@ import {
   USER_TOKEN_KEY,
   USER_VERSION_KEY,
   USER_INFO_KEY,
+  USER_PERMISSIONS_KEY,
   getRedisKey,
 } from '@/common/constants/redis-key.constants';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 import { EnableStatus } from '@/common/constants/enums';
+import { UserService } from '@/modules/user/user.service';
 
 /**
  * 认证服务
@@ -29,6 +32,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(forwardRef(() => UserService)) private userService: UserService,
   ) {}
 
   /**
@@ -81,6 +85,9 @@ export class AuthService {
     // 提取角色编码
     const roles = user.userRoles?.map((ur: any) => ur.role.roleCode) || [];
 
+    // 获取用户权限（菜单和按钮）
+    const permissions = await this.userService.getPermissionsForRoles(roles);
+
     // 生成 Access Token Payload
     const payload: JwtPayload = {
       userId,
@@ -126,7 +133,15 @@ export class AuthService {
           ...user,
           userId: user.id, // 添加 userId 字段，用于 @CurrentUser('userId') 装饰器
           roles,
+          buttons: permissions.buttons, // 添加权限列表
+          menus: permissions.menus, // 添加菜单列表
         }),
+        expiresIn * 1000,
+      ),
+      // 存储用户权限信息
+      this.cacheManager.set(
+        getRedisKey(USER_PERMISSIONS_KEY, userId),
+        JSON.stringify(permissions),
         expiresIn * 1000,
       ),
     ]);
@@ -253,22 +268,36 @@ export class AuthService {
 
     const roles = user.userRoles?.map((ur: any) => ur.role.roleCode) || [];
 
+    // 获取用户权限
+    const permissions = await this.userService.getPermissionsForRoles(roles);
+
     // 重新存储到 Redis
     const expiresIn = 7 * 24 * 60 * 60;
-    await this.cacheManager.set(
-      getRedisKey(USER_INFO_KEY, userId),
-      JSON.stringify({
-        ...user,
-        userId: user.id, // 添加 userId 字段
-        roles,
-      }),
-      expiresIn * 1000,
-    );
+    await Promise.all([
+      this.cacheManager.set(
+        getRedisKey(USER_INFO_KEY, userId),
+        JSON.stringify({
+          ...user,
+          userId: user.id, // 添加 userId 字段
+          roles,
+          buttons: permissions.buttons,
+          menus: permissions.menus,
+        }),
+        expiresIn * 1000,
+      ),
+      this.cacheManager.set(
+        getRedisKey(USER_PERMISSIONS_KEY, userId),
+        JSON.stringify(permissions),
+        expiresIn * 1000,
+      ),
+    ]);
 
     return {
       ...user,
       userId: user.id, // 添加 userId 字段
       roles,
+      buttons: permissions.buttons,
+      menus: permissions.menus,
     };
   }
 
@@ -318,6 +347,7 @@ export class AuthService {
       this.cacheManager.del(getRedisKey(USER_TOKEN_KEY, userId)),
       this.cacheManager.del(getRedisKey(USER_VERSION_KEY, userId)),
       this.cacheManager.del(getRedisKey(USER_INFO_KEY, userId)),
+      this.cacheManager.del(getRedisKey(USER_PERMISSIONS_KEY, userId)),
     ]);
   }
 }

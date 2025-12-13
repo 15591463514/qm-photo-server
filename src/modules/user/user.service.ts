@@ -25,6 +25,7 @@ import {
   getRedisKey,
 } from '@/common/constants/redis-key.constants';
 import { EnableStatus } from '@/common/constants/enums';
+import { MenuResponseDto } from '@/modules/menu/dto/menu-response.dto';
 
 /**
  * 用户服务
@@ -61,37 +62,8 @@ export class UserService {
     // 提取角色编码
     const roles = user.userRoles?.map((ur) => ur.role.roleCode) || [];
 
-    // 查询用户的所有按钮权限
-    // 根据文档中的 SQL 查询示例：
-    // SELECT DISTINCT mb.auth_mark
-    // FROM menu_buttons mb
-    // INNER JOIN role_menu_buttons rmb ON mb.id = rmb.button_id
-    // INNER JOIN user_roles ur ON rmb.role_id = ur.role_id
-    // WHERE ur.user_id = ?
-    const roleIds = user.userRoles?.map((ur) => ur.roleId) || [];
-
-    let buttons: string[] = [];
-    if (roleIds.length > 0) {
-      const buttonPermissions = await this.prisma.roleMenuButton.findMany({
-        where: {
-          roleId: {
-            in: roleIds,
-          },
-        },
-        include: {
-          button: true,
-        },
-      });
-
-      // 使用 Set 去重 authMark
-      const buttonSet = new Set<string>();
-      buttonPermissions.forEach((rmb) => {
-        if (rmb.button?.authMark) {
-          buttonSet.add(rmb.button.authMark);
-        }
-      });
-      buttons = Array.from(buttonSet);
-    }
+    // 获取用户按钮权限
+    const permissions = await this.getPermissionsForRoles(roles);
 
     return {
       userId: Number(user.id),
@@ -100,8 +72,222 @@ export class UserService {
       email: user.email,
       avatar: user.avatar,
       roles,
-      buttons,
+      buttons: permissions.buttons,
     };
+  }
+
+  /**
+   * 查询 RoleMenuButtonDetail 视图
+   * @param roleCodes 角色编码数组，不传递则查询所有数据
+   * @returns 视图数据列表
+   */
+  async queryRoleMenuButtonDetail(roleCodes?: string[]): Promise<any[]> {
+    const where: any = {
+      roleEnabled: true,
+      menuStatus: EnableStatus.ENABLED,
+    };
+
+    // 如果传递了角色编码数组，则查询指定角色的数据
+    if (roleCodes && roleCodes.length > 0) {
+      // 先查询角色ID
+      const roles = await this.prisma.role.findMany({
+        where: {
+          roleCode: { in: roleCodes },
+          enabled: true,
+        },
+        select: {
+          roleId: true,
+        },
+      });
+
+      const roleIds = roles.map((r) => r.roleId);
+      if (roleIds.length === 0) {
+        return [];
+      }
+
+      where.roleId = { in: roleIds };
+    }
+
+    return this.prisma.roleMenuButtonDetail.findMany({
+      where,
+      orderBy: [{ menuId: 'asc' }, { buttonSortOrder: 'asc' }],
+    });
+  }
+
+  /**
+   * 根据角色获取权限（菜单+按钮）
+   * @param roleCodes 角色编码数组
+   * @returns 权限信息
+   */
+  async getPermissionsForRoles(roleCodes: string[]): Promise<{
+    menus: any[];
+    buttons: string[];
+  }> {
+    if (!roleCodes || roleCodes.length === 0) {
+      return { menus: [], buttons: [] };
+    }
+
+    // 查询视图数据（包含角色、菜单、按钮的完整信息）
+    const viewData = await this.queryRoleMenuButtonDetail(roleCodes);
+
+    // 从视图数据中提取角色ID（视图已包含角色信息，无需单独查询）
+    const roleIdSet = new Set<number>();
+    viewData.forEach((v) => roleIdSet.add(v.roleId));
+
+    // 如果视图数据为空，查询角色ID（可能只有菜单权限没有按钮权限）
+    let roleIds: number[] = [];
+    if (roleIdSet.size > 0) {
+      roleIds = Array.from(roleIdSet);
+    } else {
+      // 视图数据为空，查询角色ID
+      const roles = await this.prisma.role.findMany({
+        where: {
+          roleCode: { in: roleCodes },
+          enabled: true,
+        },
+        select: {
+          roleId: true,
+        },
+      });
+      roleIds = roles.map((r) => r.roleId);
+      if (roleIds.length === 0) {
+        return { menus: [], buttons: [] };
+      }
+    }
+
+    // 查询所有有菜单权限的菜单（即使没有按钮权限）
+    const roleMenus = await this.prisma.roleMenu.findMany({
+      where: {
+        roleId: { in: roleIds },
+      },
+      select: {
+        menuId: true,
+      },
+    });
+
+    // 从视图数据中提取菜单信息（去重，视图已包含菜单基本信息）
+    const menuIdSetFromView = new Set<number>();
+    viewData.forEach((v) => menuIdSetFromView.add(v.menuId));
+
+    // 收集所有有权限的菜单ID（包括只有菜单权限的）
+    const menuIdSet = new Set<number>();
+    roleMenus.forEach((rm) => menuIdSet.add(rm.menuId));
+    menuIdSetFromView.forEach((menuId) => menuIdSet.add(menuId));
+
+    if (menuIdSet.size === 0) {
+      return { menus: [], buttons: [] };
+    }
+
+    // 只查询菜单表中视图没有的字段（parentId, sortOrder 等必要字段）
+    const menusFromDb = await this.prisma.menu.findMany({
+      where: {
+        id: { in: Array.from(menuIdSet) },
+        status: EnableStatus.ENABLED,
+      },
+      select: {
+        id: true,
+        parentId: true,
+        sortOrder: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createTime: 'asc' }],
+    });
+
+    // 从视图数据构建菜单信息映射（使用视图中的菜单数据）
+    const menuMapFromView = new Map<number, any>();
+    for (const item of viewData) {
+      if (!menuMapFromView.has(item.menuId)) {
+        menuMapFromView.set(item.menuId, {
+          id: item.menuId,
+          name: item.menuName,
+          path: item.menuPath,
+          title: item.menuTitle,
+          icon: item.menuIcon || undefined,
+          component: item.menuComponent || undefined,
+          status: item.menuStatus,
+        });
+      }
+    }
+
+    // 合并视图数据和数据库数据，补充 parentId 和 sortOrder
+    const menuMap = new Map<number, any>();
+
+    // 先处理有视图数据的菜单
+    for (const menu of menusFromDb) {
+      const viewMenu = menuMapFromView.get(menu.id);
+      if (viewMenu) {
+        menuMap.set(menu.id, {
+          ...viewMenu,
+          parentId: menu.parentId,
+          sortOrder: menu.sortOrder,
+        });
+      }
+    }
+
+    // 处理只有菜单权限但没有按钮权限的菜单（需要查询完整信息）
+    const menuIdsOnlyMenu = Array.from(menuIdSet).filter(
+      (id) => !menuMapFromView.has(id),
+    );
+
+    if (menuIdsOnlyMenu.length > 0) {
+      const menusOnlyMenu = await this.prisma.menu.findMany({
+        where: {
+          id: { in: menuIdsOnlyMenu },
+          status: EnableStatus.ENABLED,
+        },
+        select: {
+          id: true,
+          parentId: true,
+          name: true,
+          path: true,
+          component: true,
+          title: true,
+          icon: true,
+          sortOrder: true,
+          status: true,
+        },
+      });
+
+      for (const menu of menusOnlyMenu) {
+        menuMap.set(menu.id, {
+          id: menu.id,
+          parentId: menu.parentId,
+          name: menu.name,
+          path: menu.path,
+          component: menu.component,
+          title: menu.title,
+          icon: menu.icon,
+          sortOrder: menu.sortOrder,
+          status: menu.status,
+        });
+      }
+    }
+
+    // 构建按钮权限集合
+    const buttonList = viewData.map((item) => item.buttonAuthMark);
+
+    // 构建菜单列表
+    const menuList = Array.from(menuMap.values());
+
+    return { menus: menuList, buttons: buttonList };
+  }
+
+  /**
+   * 获取当前用户有权限的菜单树（用于前端动态路由）
+   * @param roles 角色编码数组
+   * @returns 用户可访问的菜单树
+   */
+  async getUserMenus(roles: string[]): Promise<MenuResponseDto[]> {
+    if (!roles || roles.length === 0) {
+      return [];
+    }
+
+    // 获取权限信息（包含菜单ID列表）
+    const permissions = await this.getPermissionsForRoles(roles);
+    const menus = await this.prisma.menu.findMany({
+      where: {},
+    });
+    console.info(menus);
+    return menus;
   }
 
   /**

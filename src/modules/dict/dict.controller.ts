@@ -32,7 +32,7 @@ import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
-@ApiTags('dict')
+@ApiTags('字典管理')
 @Controller('dict')
 @UseGuards(JwtAuthGuard) // 所有接口都需要 JWT 认证
 @ApiBearerAuth()

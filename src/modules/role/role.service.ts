@@ -9,6 +9,10 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { QueryRoleDto } from './dto/query-role.dto';
 import { RoleResponseDto } from './dto/role-response.dto';
+import {
+  AssignRolePermissionsDto,
+  RolePermissionsResponseDto,
+} from './dto/role-permissions.dto';
 import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
 import { PaginatedDto } from '@/common/dto/paginated.dto';
 import { Prisma } from '@prisma/client';
@@ -235,6 +239,162 @@ export class RoleService {
 
     return plainToInstance(RoleResponseDto, result, {
       excludeExtraneousValues: false,
+    });
+  }
+
+  /**
+   * 获取角色权限
+   * @param roleId 角色ID
+   * @returns 角色权限列表（菜单权限和按钮权限）
+   */
+  async getRolePermissions(
+    roleId: number,
+  ): Promise<RolePermissionsResponseDto[]> {
+    // 检查角色是否存在
+    const role = await this.prisma.role.findUnique({
+      where: { roleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException(`角色 ID ${roleId} 不存在`);
+    }
+
+    // 并行查询菜单权限和按钮权限
+    const [roleMenus, roleMenuButtons] = await Promise.all([
+      this.prisma.roleMenu.findMany({
+        where: { roleId },
+        select: {
+          menuId: true,
+        },
+      }),
+      this.prisma.roleMenuButton.findMany({
+        where: { roleId },
+        select: {
+          menuId: true,
+          buttonId: true,
+        },
+      }),
+    ]);
+
+    // 收集所有有权限的菜单ID（包括菜单权限和按钮权限）
+    const menuIdSet = new Set<number>();
+    roleMenus.forEach((rm) => menuIdSet.add(rm.menuId));
+    roleMenuButtons.forEach((rmb) => menuIdSet.add(rmb.menuId));
+
+    // 按菜单ID分组，收集每个菜单的按钮ID列表
+    const buttonMap = new Map<number, number[]>();
+    for (const rmb of roleMenuButtons) {
+      if (!buttonMap.has(rmb.menuId)) {
+        buttonMap.set(rmb.menuId, []);
+      }
+      buttonMap.get(rmb.menuId)!.push(rmb.buttonId);
+    }
+
+    // 转换为响应格式
+    const permissions: RolePermissionsResponseDto[] = [];
+    for (const menuId of menuIdSet) {
+      const hasMenuPermission = roleMenus.some((rm) => rm.menuId === menuId);
+      permissions.push({
+        menuId,
+        hasMenuPermission,
+        buttonIds: buttonMap.get(menuId) || [],
+      });
+    }
+
+    return permissions;
+  }
+
+  /**
+   * 分配角色权限
+   * @param roleId 角色ID
+   * @param assignDto 权限分配 DTO
+   */
+  async assignRolePermissions(
+    roleId: number,
+    assignDto: AssignRolePermissionsDto,
+  ): Promise<void> {
+    // 检查角色是否存在
+    const role = await this.prisma.role.findUnique({
+      where: { roleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException(`角色 ID ${roleId} 不存在`);
+    }
+
+    // 使用事务确保数据一致性
+    await this.prisma.$transaction(async (tx) => {
+      // 1. 删除该角色的所有现有权限（菜单权限和按钮权限）
+      await Promise.all([
+        tx.roleMenu.deleteMany({
+          where: { roleId },
+        }),
+        tx.roleMenuButton.deleteMany({
+          where: { roleId },
+        }),
+      ]);
+
+      // 2. 准备插入的菜单权限和按钮权限
+      const menuPermissionsToCreate: Prisma.RoleMenuCreateManyInput[] = [];
+      const buttonPermissionsToCreate: Prisma.RoleMenuButtonCreateManyInput[] =
+        [];
+
+      for (const permission of assignDto.permissions) {
+        // 验证菜单是否存在
+        const menu = await tx.menu.findUnique({
+          where: { id: permission.menuId },
+        });
+
+        if (!menu) {
+          throw new NotFoundException(`菜单 ID ${permission.menuId} 不存在`);
+        }
+
+        // 只要权限项在列表中，就表示有菜单权限
+        // 添加菜单权限
+        menuPermissionsToCreate.push({
+          roleId,
+          menuId: permission.menuId,
+        });
+
+        // 如果有按钮权限，验证并添加按钮权限
+        if (permission.buttonIds && permission.buttonIds.length > 0) {
+          for (const buttonId of permission.buttonIds) {
+            const button = await tx.menuButton.findUnique({
+              where: { id: buttonId },
+            });
+
+            if (!button) {
+              throw new NotFoundException(`按钮 ID ${buttonId} 不存在`);
+            }
+
+            // 验证按钮是否属于该菜单
+            if (button.menuId !== permission.menuId) {
+              throw new ConflictException(
+                `按钮 ID ${buttonId} 不属于菜单 ID ${permission.menuId}`,
+              );
+            }
+
+            buttonPermissionsToCreate.push({
+              roleId,
+              menuId: permission.menuId,
+              buttonId,
+            });
+          }
+        }
+      }
+
+      // 批量插入权限
+      if (menuPermissionsToCreate.length > 0) {
+        await tx.roleMenu.createMany({
+          data: menuPermissionsToCreate,
+        });
+      }
+
+      if (buttonPermissionsToCreate.length > 0) {
+        await tx.roleMenuButton.createMany({
+          data: buttonPermissionsToCreate,
+        });
+      }
     });
   }
 }

@@ -3,7 +3,8 @@
 // 根据前端文档设计的完整数据库结构
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
@@ -171,6 +172,35 @@ model RoleMenuButton {
   @@index([roleId], name: "idx_role_id")
   @@index([menuId], name: "idx_menu_id")
   @@map("role_menu_buttons")
+}
+
+// ==================== 角色菜单按钮关联视图 ====================
+view RoleMenuButtonDetail {
+  id         Int      @map("id")
+  roleId     Int      @map("role_id")
+  menuId     Int      @map("menu_id")
+  buttonId   Int      @map("button_id")
+  createTime DateTime @map("create_time") @db.DateTime(0)
+  
+  // 角色信息
+  roleName   String   @map("role_name") @db.VarChar(50)
+  roleCode   String   @map("role_code") @db.VarChar(50)
+  roleEnabled Boolean @map("role_enabled")
+  
+  // 菜单信息
+  menuName    String  @map("menu_name") @db.VarChar(100)
+  menuPath    String  @map("menu_path") @db.VarChar(200)
+  menuTitle   String  @map("menu_title") @db.VarChar(100)
+  menuIcon    String? @map("menu_icon") @db.VarChar(100)
+  menuComponent String? @map("menu_component") @db.VarChar(500)
+  menuStatus  String  @map("menu_status") @db.VarChar(10)
+  
+  // 按钮信息
+  buttonTitle   String @map("button_title") @db.VarChar(100)
+  buttonAuthMark String @map("button_auth_mark") @db.VarChar(100)
+  buttonSortOrder Int  @map("button_sort_order")
+
+  @@map("v_role_menu_button_detail")
 }
 
 // ==================== 字典表（扁平化设计）====================

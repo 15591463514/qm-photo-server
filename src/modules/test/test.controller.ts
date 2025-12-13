@@ -28,7 +28,7 @@ import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { QueryTestDto } from './dto/query-test.dto';
 import { CacheTTL, CacheInterceptor, CacheKey } from '@nestjs/cache-manager';
 
-@ApiTags('test')
+@ApiTags('测试')
 @Controller('test')
 export class TestController {
   constructor(private readonly testService: TestService) {}

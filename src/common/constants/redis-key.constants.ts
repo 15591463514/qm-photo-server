@@ -44,6 +44,22 @@ export const USER_ONLINE_KEY = 'user:online';
 export const CAPTCHA_IMG_KEY = 'captcha:img';
 
 /**
+ * 用户菜单 Key
+ * 格式: USER_MENU_KEY:${userId}
+ * 值: 用户菜单信息的 JSON 字符串（包含菜单）
+ * 过期时间: 7天（与 Token 同步）
+ */
+export const USER_MENU_KEY = 'user:menus';
+
+/**
+ * 用户权限 Key
+ * 格式: USER_PERMISSIONS_KEY:${userId}
+ * 值: 用户权限信息的 JSON 字符串（包含菜单和按钮权限）
+ * 过期时间: 7天（与 Token 同步）
+ */
+export const USER_PERMISSIONS_KEY = 'user:permissions';
+
+/**
  * 生成完整的 Redis Key
  * @param prefix Key 前缀
  * @param suffix Key 后缀（通常是 userId 或其他标识符，支持 string 或 number）

@@ -26,18 +26,25 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { QueryRoleDto } from './dto/query-role.dto';
 import { RoleResponseDto } from './dto/role-response.dto';
+import {
+  AssignRolePermissionsDto,
+  RolePermissionsResponseDto,
+} from './dto/role-permissions.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 
-@ApiTags('role')
+@ApiTags('角色管理')
 @Controller('role')
 @UseGuards(JwtAuthGuard) // 所有接口都需要 JWT 认证
 @ApiBearerAuth()
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
+  /**
+   * 获取角色列表（分页）
+   */
   @Get('list')
   @ApiOperation({
     summary: '获取角色列表（分页）',
@@ -57,6 +64,9 @@ export class RoleController {
     return this.roleService.findPaginated(query);
   }
 
+  /**
+   * 获取角色详情
+   */
   @Get(':id')
   @ApiOperation({
     summary: '获取角色详情',
@@ -74,6 +84,9 @@ export class RoleController {
     return this.roleService.findOne(roleId);
   }
 
+  /**
+   * 创建角色
+   */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -93,6 +106,9 @@ export class RoleController {
     return this.roleService.create(createRoleDto);
   }
 
+  /**
+   * 更新角色
+   */
   @Put(':id')
   @ApiOperation({
     summary: '更新角色',
@@ -116,6 +132,9 @@ export class RoleController {
     return this.roleService.update(roleId, updateRoleDto);
   }
 
+  /**
+   * 删除角色
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -133,5 +152,52 @@ export class RoleController {
   @ApiResult({ status: 409, description: '该角色已被用户使用，无法删除' })
   async remove(@Param('id', ParseIntPipe) roleId: number) {
     return this.roleService.remove(roleId);
+  }
+
+  /**
+   * 获取角色权限
+   */
+  @Get(':id/permissions')
+  @ApiOperation({
+    summary: '获取角色权限',
+    description: '获取指定角色的菜单和按钮权限',
+  })
+  @ApiParam({ name: 'id', type: Number, description: '角色ID' })
+  @ApiResult({
+    status: 200,
+    description: '获取成功',
+    type: [RolePermissionsResponseDto],
+  })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '角色不存在' })
+  async getRolePermissions(@Param('id', ParseIntPipe) roleId: number) {
+    return this.roleService.getRolePermissions(roleId);
+  }
+
+  /**
+   * 分配角色权限
+   */
+  @Post(':id/permissions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '分配角色权限',
+    description: '为指定角色分配菜单和按钮权限',
+  })
+  @ApiParam({ name: 'id', type: Number, description: '角色ID' })
+  @ApiBody({ type: AssignRolePermissionsDto })
+  @ApiResult({
+    status: 200,
+    description: '分配成功',
+  })
+  @ApiResult({ status: 400, description: '请求参数错误' })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '角色不存在或菜单/按钮不存在' })
+  @ApiResult({ status: 409, description: '按钮不属于指定菜单' })
+  async assignRolePermissions(
+    @Param('id', ParseIntPipe) roleId: number,
+    @Body() assignDto: AssignRolePermissionsDto,
+  ) {
+    await this.roleService.assignRolePermissions(roleId, assignDto);
+    return { message: '权限分配成功' };
   }
 }
