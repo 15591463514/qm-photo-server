@@ -11,13 +11,18 @@ import { QueryMenuDto } from './dto/query-menu.dto';
 import { MenuResponseDto } from './dto/menu-response.dto';
 import { Prisma } from '@prisma/client';
 import { EnableStatus } from '@/common/constants/enums';
+import { MenuStoreService } from './menu.store';
+import { buildMenuTree, transformMenuToDto } from '@/common/helpers';
 
 /**
  * 菜单服务
  */
 @Injectable()
 export class MenuService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private menuStore: MenuStoreService,
+  ) {}
 
   /**
    * 获取菜单树形结构
@@ -25,13 +30,20 @@ export class MenuService {
    * @returns 树形菜单列表
    */
   async getMenuTree(query: QueryMenuDto): Promise<MenuResponseDto[]> {
-    const { name, path, status } = query;
+    const { title, path, status } = query;
+
+    // 查询条件为空，则返回所有菜单
+    if (!title && !path && !status) {
+      // 从缓存中获取所有菜单
+      const menus = await this.menuStore.getAllMenus();
+      return buildMenuTree(menus);
+    }
 
     // 构建查询条件
     const where: Prisma.MenuWhereInput = {};
 
-    if (name) {
-      where.name = { contains: name };
+    if (title) {
+      where.title = { contains: title };
     }
     if (path) {
       where.path = { contains: path };
@@ -40,7 +52,7 @@ export class MenuService {
       where.status = status;
     }
 
-    // 查询所有菜单
+    // 根据条件查询菜单数据
     const menus = await this.prisma.menu.findMany({
       where,
       include: {
@@ -51,54 +63,21 @@ export class MenuService {
       orderBy: [{ sortOrder: 'asc' }, { createTime: 'asc' }],
     });
 
-    // 构建树形结构
-    const menuMap = new Map<number, MenuResponseDto>();
-    const rootMenus: MenuResponseDto[] = [];
+    // 构建菜单树形结构
+    const menuTree = buildMenuTree(menus);
 
-    // 第一遍遍历：创建所有菜单节点
-    for (const menu of menus) {
-      const menuDto = plainToInstance(
-        MenuResponseDto,
-        {
-          ...menu,
-          buttons: menu.menuButtons.map((btn) => ({
-            id: btn.id,
-            menuId: btn.menuId,
-            title: btn.title,
-            authMark: btn.authMark,
-            sortOrder: btn.sortOrder,
-            createTime: btn.createTime,
-          })),
-          children: [],
-        },
-        {
-          excludeExtraneousValues: false,
-        },
-      );
+    return menuTree;
+  }
 
-      menuMap.set(menu.id, menuDto);
-    }
-
-    // 第二遍遍历：构建父子关系
-    for (const menu of menus) {
-      const menuDto = menuMap.get(menu.id)!;
-
-      if (menu.parentId === 0) {
-        // 根节点
-        rootMenus.push(menuDto);
-      } else {
-        // 子节点
-        const parent = menuMap.get(menu.parentId);
-        if (parent) {
-          if (!parent.children) {
-            parent.children = [];
-          }
-          parent.children.push(menuDto);
-        }
-      }
-    }
-
-    return rootMenus;
+  /**
+   * 根据菜单ID列表获取菜单列表
+   * @param menuIds 菜单ID列表
+   * @returns 菜单列表
+   */
+  async getMenusByMenuIds(menuIds: number[]): Promise<MenuResponseDto[]> {
+    const allMenus = await this.menuStore.getAllMenus();
+    const menus = allMenus.filter((menu) => menuIds.includes(menu.id));
+    return menus;
   }
 
   /**
@@ -120,23 +99,7 @@ export class MenuService {
       throw new NotFoundException(`菜单 ID ${id} 不存在`);
     }
 
-    return plainToInstance(
-      MenuResponseDto,
-      {
-        ...menu,
-        buttons: menu.menuButtons.map((btn) => ({
-          id: btn.id,
-          menuId: btn.menuId,
-          title: btn.title,
-          authMark: btn.authMark,
-          sortOrder: btn.sortOrder,
-          createTime: btn.createTime,
-        })),
-      },
-      {
-        excludeExtraneousValues: false,
-      },
-    );
+    return transformMenuToDto(menu);
   }
 
   /**
@@ -208,6 +171,9 @@ export class MenuService {
         })),
       });
     }
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
 
     return this.findOne(menu.id);
   }
@@ -299,60 +265,23 @@ export class MenuService {
       }
     }
 
-    // 更新菜单
+    // 构建更新数据对象
+    // 排除不需要更新的字段（buttons 单独处理，roles 暂不支持更新）
+    const { buttons, roles, ...menuUpdateFields } = updateMenuDto;
+
+    // 过滤掉 undefined 值，只保留需要更新的字段
     const updateData: Prisma.MenuUpdateInput = {};
 
-    if (updateMenuDto.parentId !== undefined) {
-      // 使用类型断言，因为Prisma类型系统可能将parentId识别为关系字段
-      (updateData as any).parentId = updateMenuDto.parentId;
-    }
-    if (updateMenuDto.name !== undefined) {
-      updateData.name = updateMenuDto.name;
-    }
-    if (updateMenuDto.path !== undefined) {
-      updateData.path = updateMenuDto.path;
-    }
-    if (updateMenuDto.component !== undefined) {
-      updateData.component = updateMenuDto.component;
-    }
-    if (updateMenuDto.title !== undefined) {
-      updateData.title = updateMenuDto.title;
-    }
-    if (updateMenuDto.icon !== undefined) {
-      updateData.icon = updateMenuDto.icon;
-    }
-    if (updateMenuDto.isHide !== undefined) {
-      updateData.isHide = updateMenuDto.isHide;
-    }
-    if (updateMenuDto.isHideTab !== undefined) {
-      updateData.isHideTab = updateMenuDto.isHideTab;
-    }
-    if (updateMenuDto.link !== undefined) {
-      updateData.link = updateMenuDto.link;
-    }
-    if (updateMenuDto.isIframe !== undefined) {
-      updateData.isIframe = updateMenuDto.isIframe;
-    }
-    if (updateMenuDto.keepAlive !== undefined) {
-      updateData.keepAlive = updateMenuDto.keepAlive;
-    }
-    if (updateMenuDto.isFirstLevel !== undefined) {
-      updateData.isFirstLevel = updateMenuDto.isFirstLevel;
-    }
-    if (updateMenuDto.fixedTab !== undefined) {
-      updateData.fixedTab = updateMenuDto.fixedTab;
-    }
-    if (updateMenuDto.activePath !== undefined) {
-      updateData.activePath = updateMenuDto.activePath;
-    }
-    if (updateMenuDto.isFullPage !== undefined) {
-      updateData.isFullPage = updateMenuDto.isFullPage;
-    }
-    if (updateMenuDto.sortOrder !== undefined) {
-      updateData.sortOrder = updateMenuDto.sortOrder;
-    }
-    if (updateMenuDto.status !== undefined) {
-      updateData.status = updateMenuDto.status;
+    // 遍历所有字段，只添加非 undefined 的值
+    for (const [key, value] of Object.entries(menuUpdateFields)) {
+      if (value !== undefined) {
+        // parentId 需要特殊处理（Prisma 类型系统可能将其识别为关系字段）
+        if (key === 'parentId') {
+          (updateData as any).parentId = value;
+        } else {
+          (updateData as any)[key] = value;
+        }
+      }
     }
 
     await this.prisma.menu.update({
@@ -379,6 +308,9 @@ export class MenuService {
         });
       }
     }
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
 
     return this.findOne(id);
   }
@@ -410,6 +342,9 @@ export class MenuService {
     await this.prisma.menu.delete({
       where: { id },
     });
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
 
     return plainToInstance(MenuResponseDto, menu, {
       excludeExtraneousValues: false,

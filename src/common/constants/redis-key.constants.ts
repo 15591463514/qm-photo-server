@@ -60,6 +60,27 @@ export const USER_MENU_KEY = 'user:menus';
 export const USER_PERMISSIONS_KEY = 'user:permissions';
 
 /**
+ * 菜单 Key
+ * 格式: MENU_KEY:all
+ * 值: 菜单信息的数组
+ */
+export const MENU_KEY = 'menu';
+
+/**
+ * 角色 Key
+ * 格式: ROLE_KEY:all
+ * 值: 角色信息的数组
+ */
+export const ROLE_KEY = 'role';
+
+/**
+ * 字典 Key
+ * 格式: DICT_KEY:all
+ * 值: 字典信息的数组
+ */
+export const DICT_KEY = 'dict';
+
+/**
  * 生成完整的 Redis Key
  * @param prefix Key 前缀
  * @param suffix Key 后缀（通常是 userId 或其他标识符，支持 string 或 number）

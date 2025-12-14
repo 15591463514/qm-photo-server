@@ -13,37 +13,54 @@ import {
   AssignRolePermissionsDto,
   RolePermissionsResponseDto,
 } from './dto/role-permissions.dto';
-import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
-import { PaginatedDto } from '@/common/dto/paginated.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+import { RoleStoreService } from './role.store';
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import {
+  USER_INFO_KEY,
+  USER_PERMISSIONS_KEY,
+  getRedisKey,
+} from '@/common/constants/redis-key.constants';
 
 /**
  * 角色服务
  */
 @Injectable()
 export class RoleService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private roleStore: RoleStoreService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   /**
-   * 分页查询角色列表
-   * @param query 查询参数（包含分页参数和过滤条件）
-   * @returns 分页角色列表
+   * 将角色转换为响应 DTO
+   * @param role 角色
+   * @returns 响应 DTO
    */
-  async findPaginated(
-    query: QueryRoleDto,
-  ): Promise<PaginatedDto<RoleResponseDto>> {
-    const {
-      skip,
-      take,
-      current,
-      size,
-      roleId,
-      roleName,
-      roleCode,
-      description,
-      enabled,
-    } = query;
+  private roleToResponseDto(role: Role): RoleResponseDto {
+    return plainToInstance(RoleResponseDto, role, {
+      excludeExtraneousValues: false,
+    });
+  }
 
+  /**
+   * 查询角色列表
+   * @param query 查询参数（过滤条件）
+   * @returns 角色列表
+   */
+  async findAll(query: QueryRoleDto): Promise<RoleResponseDto[]> {
+    const { roleId, roleName, roleCode, description, enabled } = query;
+
+    const queryValues = Object.values(query);
+    const everyValueIsEmpty = queryValues.every((value) => !value);
+
+    if (everyValueIsEmpty) {
+      const roles = await this.roleStore.getAllRoles();
+      return roles.map(this.roleToResponseDto);
+    }
     // 构建查询条件
     const where: Prisma.RoleWhereInput = {};
 
@@ -70,34 +87,16 @@ export class RoleService {
       where.enabled = enabled;
     }
 
-    // 并行查询数据和总数
-    const [results, total] = await Promise.all([
-      this.prisma.role.findMany({
-        where,
-        orderBy: {
-          createTime: 'desc',
-        },
-        skip,
-        take,
-      }),
-      this.prisma.role.count({
-        where,
-      }),
-    ]);
+    // 查询所有符合条件的角色
+    const results = await this.prisma.role.findMany({
+      where,
+      orderBy: {
+        createTime: 'desc',
+      },
+    });
 
     // 转换数据
-    const records = results.map((result) =>
-      plainToInstance(RoleResponseDto, result, {
-        excludeExtraneousValues: false,
-      }),
-    );
-
-    // 创建分页响应
-    return createPaginatedResponse(
-      records,
-      { skip, take, current, size },
-      total,
-    );
+    return results.map(this.roleToResponseDto);
   }
 
   /**
@@ -396,5 +395,35 @@ export class RoleService {
         });
       }
     });
+
+    // 清除所有拥有该角色的用户的缓存（权限变更后需要清除）
+    await this.clearUsersCacheByRole(roleId);
+  }
+
+  /**
+   * 清除拥有指定角色的所有用户的缓存
+   * @param roleId 角色ID
+   */
+  private async clearUsersCacheByRole(roleId: number): Promise<void> {
+    // 查询所有拥有该角色的用户
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { roleId },
+      select: { userId: true },
+    });
+
+    if (userRoles.length === 0) {
+      return;
+    }
+
+    // 清除这些用户的缓存
+    const userIds = userRoles.map((ur) => ur.userId);
+    await Promise.all(
+      userIds.map((userId) =>
+        Promise.all([
+          this.cacheManager.del(getRedisKey(USER_INFO_KEY, userId)),
+          this.cacheManager.del(getRedisKey(USER_PERMISSIONS_KEY, userId)),
+        ]),
+      ),
+    );
   }
 }

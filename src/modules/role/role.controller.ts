@@ -31,8 +31,6 @@ import {
   RolePermissionsResponseDto,
 } from './dto/role-permissions.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
-import { PaginationDto } from '@/common/dto/pagination.dto';
-import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 
 @ApiTags('角色管理')
@@ -43,25 +41,24 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   /**
-   * 获取角色列表（分页）
+   * 获取角色列表
    */
   @Get('list')
   @ApiOperation({
-    summary: '获取角色列表（分页）',
+    summary: '获取角色列表',
     description:
-      '分页获取角色列表，支持按角色ID、角色名称、角色编码、描述、启用状态筛选',
+      '获取角色列表，支持按角色ID、角色名称、角色编码、描述、启用状态筛选',
   })
-  @ApiExtraModels(QueryRoleDto, PaginationDto)
+  @ApiExtraModels(QueryRoleDto)
   @ApiQuery({ type: QueryRoleDto })
   @ApiResult({
     status: 200,
     description: '查询成功',
     type: [RoleResponseDto],
-    isPage: true,
   })
   @ApiResult({ status: 401, description: '未授权' })
-  findPaginated(@Query(PaginationPipe) query: QueryRoleDto) {
-    return this.roleService.findPaginated(query);
+  findAll(@Query() query: QueryRoleDto) {
+    return this.roleService.findAll(query);
   }
 
   /**

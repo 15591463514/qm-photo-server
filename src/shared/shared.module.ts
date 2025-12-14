@@ -45,8 +45,6 @@ import { RolesGuard } from '@/common/guards/roles.guard';
           keyPrefixSeparator: '',
         });
 
-        console.log(redisUrl);
-
         return {
           stores: [keyvStore], // 使用 stores 数组（cache-manager v6+ 的要求）
           ttl: redis.ttl * 1000, // 默认过期时间（毫秒）

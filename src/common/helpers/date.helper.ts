@@ -53,3 +53,24 @@ export function dateToLocalString(
 ): string | null {
   return utcToLocal(date);
 }
+
+/**
+ * 将值转换为 Date 对象
+ * 用于处理从 Redis 缓存中获取的数据，Date 字段可能被序列化为字符串
+ * @param value 可能是 Date 对象、字符串或 null/undefined
+ * @returns Date 对象，如果输入为 null/undefined 则返回 null
+ */
+export function toDate(value: Date | string | null | undefined): Date | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const date = new Date(value);
+    // 检查是否为有效日期
+    return isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}

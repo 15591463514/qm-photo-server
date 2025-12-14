@@ -33,13 +33,17 @@ import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { MenuService } from '../menu/menu.service';
 
 @ApiTags('用户管理')
 @Controller('user')
 @UseGuards(JwtAuthGuard) // 所有接口都需要 JWT 认证
 @ApiBearerAuth()
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly menuService: MenuService,
+  ) {}
 
   /**
    * 获取当前用户信息
@@ -78,9 +82,10 @@ export class UserController {
   })
   @ApiResult({ status: 401, description: '未授权' })
   async getUserMenus(
-    @CurrentUser('roles') roles: string[],
+    @CurrentUser() user: UserInfoResponseDto,
+    @CurrentUser('menus') menus: MenuResponseDto[],
   ): Promise<MenuResponseDto[]> {
-    return this.userService.getUserMenus(roles);
+    return this.menuService.getMenusByMenuIds(menus.map((menu) => menu.id));
   }
 
   /**

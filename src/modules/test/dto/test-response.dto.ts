@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { utcToLocal } from '@/common/helpers/date.helper';
+import { utcToLocal } from '@/common/helpers';
 
 export class TestResponseDto {
   @ApiProperty({

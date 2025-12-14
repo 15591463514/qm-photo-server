@@ -17,11 +17,14 @@ import { QueryUserDto } from './dto/query-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserInfoResponseDto } from './dto/user-info-response.dto';
-import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
+import { createPaginatedResponse } from '@/common/helpers';
 import { PaginatedDto } from '@/common/dto/paginated.dto';
 import { Prisma } from '@prisma/client';
 import {
   USER_VERSION_KEY,
+  USER_INFO_KEY,
+  USER_PERMISSIONS_KEY,
+  USER_TOKEN_KEY,
   getRedisKey,
 } from '@/common/constants/redis-key.constants';
 import { EnableStatus } from '@/common/constants/enums';
@@ -272,25 +275,6 @@ export class UserService {
   }
 
   /**
-   * 获取当前用户有权限的菜单树（用于前端动态路由）
-   * @param roles 角色编码数组
-   * @returns 用户可访问的菜单树
-   */
-  async getUserMenus(roles: string[]): Promise<MenuResponseDto[]> {
-    if (!roles || roles.length === 0) {
-      return [];
-    }
-
-    // 获取权限信息（包含菜单ID列表）
-    const permissions = await this.getPermissionsForRoles(roles);
-    const menus = await this.prisma.menu.findMany({
-      where: {},
-    });
-    console.info(menus);
-    return menus;
-  }
-
-  /**
    * 分页查询用户列表
    * @param query 查询参数（包含分页参数和过滤条件）
    * @returns 分页用户列表
@@ -518,6 +502,9 @@ export class UserService {
       }
     }
 
+    // 清除用户缓存（用户信息或角色变更后需要清除）
+    await this.clearUserCache(userIdInt);
+
     const { password: _, ...userWithoutPassword } = result;
     return plainToInstance(
       UserResponseDto,
@@ -529,6 +516,17 @@ export class UserService {
         excludeExtraneousValues: false,
       },
     );
+  }
+
+  /**
+   * 清除用户缓存
+   * @param userId 用户ID
+   */
+  private async clearUserCache(userId: number): Promise<void> {
+    await Promise.all([
+      this.cacheManager.del(getRedisKey(USER_INFO_KEY, userId)),
+      this.cacheManager.del(getRedisKey(USER_PERMISSIONS_KEY, userId)),
+    ]);
   }
 
   /**
@@ -602,6 +600,14 @@ export class UserService {
 
     // 检查是否是当前登录用户（防止删除自己）
     // 注意：这里需要从上下文获取当前用户ID，暂时先不检查
+
+    // 清除用户所有缓存（删除用户前清除）
+    await Promise.all([
+      this.cacheManager.del(getRedisKey(USER_TOKEN_KEY, userIdInt)),
+      this.cacheManager.del(getRedisKey(USER_VERSION_KEY, userIdInt)),
+      this.cacheManager.del(getRedisKey(USER_INFO_KEY, userIdInt)),
+      this.cacheManager.del(getRedisKey(USER_PERMISSIONS_KEY, userIdInt)),
+    ]);
 
     // 执行删除（硬删除）
     const result = await this.prisma.user.delete({
@@ -690,6 +696,8 @@ export class UserService {
         newVersion.toString(),
         7 * 24 * 60 * 60 * 1000, // 7天过期时间
       ),
+      // 清除用户信息缓存（密码变更后需要清除）
+      this.clearUserCache(userId),
     ]);
 
     return { message: '密码修改成功' };

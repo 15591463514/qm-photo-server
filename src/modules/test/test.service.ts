@@ -4,7 +4,7 @@ import { PrismaService } from 'nestjs-prisma';
 import { CreateTestDto } from './dto/create-test.dto';
 import { UpdateTestDto } from './dto/update-test.dto';
 import { TestResponseDto } from './dto/test-response.dto';
-import { createPaginatedResponse } from '@/common/helpers/pagination.helper';
+import { createPaginatedResponse } from '@/common/helpers';
 import { PaginatedDto } from '@/common/dto/paginated.dto';
 import { QueryTestDto } from './dto/query-test.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';

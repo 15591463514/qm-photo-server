@@ -13,13 +13,18 @@ import { DictResponseDto } from './dto/dict-response.dto';
 import { DictTreeResponseDto } from './dto/dict-tree-response.dto';
 import { Prisma } from '@prisma/client';
 import { EnableStatus } from '@/common/constants/enums';
+import { DictStoreService } from './dict.store';
+import { buildDictTree } from '@/common/helpers';
 
 /**
  * 字典服务
  */
 @Injectable()
 export class DictService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dictStore: DictStoreService,
+  ) {}
 
   /**
    * 获取字典树形结构
@@ -29,6 +34,15 @@ export class DictService {
   async getDictTree(query: QueryDictDto): Promise<DictTreeResponseDto[]> {
     const { typeCode, typeName, typeStatus, dataLabel, dataValue, status } =
       query;
+
+    const queryValues = Object.values(query);
+    const everyValueIsEmpty = queryValues.every((value) => !value);
+
+    // 查询所有字典数据
+    if (everyValueIsEmpty) {
+      const dicts = await this.dictStore.getAllDicts();
+      return buildDictTree(dicts);
+    }
 
     // 构建查询条件
     const where: Prisma.DictWhereInput = {};
@@ -62,51 +76,7 @@ export class DictService {
       ],
     });
 
-    // 按 typeCode 分组
-    const typeMap = new Map<string, DictTreeResponseDto>();
-
-    for (const dict of dicts) {
-      const typeKey = dict.typeCode;
-
-      if (!typeMap.has(typeKey)) {
-        // 创建类型节点
-        const typeNode: DictTreeResponseDto = {
-          typeCode: dict.typeCode,
-          typeName: dict.typeName,
-          typeStatus: dict.typeStatus,
-          isType: true,
-          children: [],
-          dataCount: 0,
-          createTime: dict.createTime.toISOString(),
-        };
-        typeMap.set(typeKey, typeNode);
-      }
-
-      const typeNode = typeMap.get(typeKey)!;
-      typeNode.children.push(
-        plainToInstance(DictResponseDto, dict, {
-          excludeExtraneousValues: false,
-        }),
-      );
-      typeNode.dataCount = (typeNode.dataCount || 0) + 1;
-
-      // 更新最早创建时间
-      const dictTime = dict.createTime.getTime();
-      const nodeTime = new Date(typeNode.createTime!).getTime();
-      if (dictTime < nodeTime) {
-        typeNode.createTime = dict.createTime.toISOString();
-      }
-    }
-
-    // 转换为数组并排序
-    const treeList = Array.from(typeMap.values());
-    treeList.sort((a, b) => {
-      if (a.typeCode < b.typeCode) return -1;
-      if (a.typeCode > b.typeCode) return 1;
-      return 0;
-    });
-
-    return treeList;
+    return buildDictTree(dicts);
   }
 
   /**

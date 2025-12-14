@@ -11,7 +11,7 @@ export class QueryMenuDto {
   })
   @IsString({ message: '菜单名称必须是字符串' })
   @IsOptional()
-  name?: string;
+  title?: string;
 
   @ApiPropertyOptional({
     description: '路由路径（模糊查询）',
@@ -29,4 +29,3 @@ export class QueryMenuDto {
   @IsOptional()
   status?: string;
 }
-

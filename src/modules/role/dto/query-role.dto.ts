@@ -1,13 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsBoolean, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 
 /**
  * 查询角色 DTO
- * 继承 PaginationDto，包含分页参数和查询条件
+ * 包含查询条件（不包含分页参数）
  */
-export class QueryRoleDto extends PaginationDto {
+export class QueryRoleDto {
   @ApiPropertyOptional({
     description: '角色ID',
     example: 1,
