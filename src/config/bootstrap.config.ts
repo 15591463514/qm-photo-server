@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 /**
  * 配置 CORS
@@ -47,4 +48,12 @@ export function setupApiVersioning(app: INestApplication): void {
     type: VersioningType.URI, // 使用 URI 版本控制
     defaultVersion: '1', // 默认版本为 v1
   });
+}
+
+/**
+ * 使用winston作为日志记录器
+ */
+export function setupLogger(app: INestApplication): void {
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+  app.useLogger(logger);
 }

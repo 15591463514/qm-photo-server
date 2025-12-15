@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   UnauthorizedException,
+  ForbiddenException,
   Inject,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
@@ -58,8 +59,12 @@ export class UserService {
       },
     });
 
-    if (!user || user.status !== EnableStatus.ENABLED) {
-      throw new NotFoundException('用户不存在或已被禁用');
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    if (user.status !== EnableStatus.ENABLED) {
+      throw new ForbiddenException('用户已被禁用');
     }
 
     // 提取角色编码
@@ -658,7 +663,7 @@ export class UserService {
     );
 
     if (!isOldPasswordValid) {
-      throw new UnauthorizedException('当前密码不正确');
+      throw new BadRequestException('当前密码不正确');
     }
 
     // 检查新密码是否与旧密码相同

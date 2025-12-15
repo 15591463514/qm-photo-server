@@ -216,13 +216,5 @@ export class UpdateMenuDto {
   @IsString({ each: true, message: '角色权限列表中的每个元素必须是字符串' })
   @IsOptional()
   roles?: string[];
-
-  @ApiPropertyOptional({
-    description: '菜单按钮列表',
-    type: [UpdateMenuButtonDto],
-  })
-  @IsArray({ message: '菜单按钮列表必须是数组' })
-  @IsOptional()
-  buttons?: UpdateMenuButtonDto[];
 }
 

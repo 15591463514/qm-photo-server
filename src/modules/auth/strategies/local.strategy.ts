@@ -1,6 +1,6 @@
 import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { AuthService } from '../auth.service';
 
 /**
@@ -23,10 +23,9 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
    * @returns 用户信息（排除密码）
    */
   async validate(userName: string, password: string): Promise<any> {
+    // validateUser 方法内部已经处理了错误，这里直接返回用户信息
+    // 如果验证失败，validateUser 会抛出异常
     const user = await this.authService.validateUser(userName, password);
-    if (!user) {
-      throw new UnauthorizedException('用户名或密码错误');
-    }
     return user;
   }
 }

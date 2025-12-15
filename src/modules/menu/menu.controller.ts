@@ -23,9 +23,12 @@ import {
 } from '@nestjs/swagger';
 import { MenuService } from './menu.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
+import { CreateMenuButtonDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
+import { UpdateMenuButtonDto } from './dto/update-menu.dto';
 import { QueryMenuDto } from './dto/query-menu.dto';
 import { MenuResponseDto } from './dto/menu-response.dto';
+import { ButtonResponseDto } from './dto/button-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -130,6 +133,104 @@ export class MenuController {
     @CurrentUser('userId') userId?: number,
   ): Promise<MenuResponseDto> {
     return this.menuService.update(id, updateMenuDto, userId);
+  }
+
+  /**
+   * 创建菜单按钮
+   */
+  @Post(':menuId/button')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: '创建菜单按钮',
+    description: '为指定菜单创建一个新的按钮',
+  })
+  @ApiParam({ name: 'menuId', type: Number, description: '菜单ID' })
+  @ApiBody({ type: CreateMenuButtonDto })
+  @ApiResult({
+    status: 201,
+    description: '创建成功',
+    type: ButtonResponseDto,
+  })
+  @ApiResult({ status: 400, description: '请求参数错误' })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '菜单不存在' })
+  @ApiResult({ status: 409, description: '权限标识已存在' })
+  async createButton(
+    @Param('menuId', ParseIntPipe) menuId: number,
+    @Body() createButtonDto: CreateMenuButtonDto,
+  ): Promise<{
+    id: number;
+    menuId: number;
+    title: string;
+    authMark: string;
+    sortOrder: number;
+  }> {
+    return this.menuService.createButton(menuId, createButtonDto);
+  }
+
+  /**
+   * 更新菜单按钮
+   */
+  @Put(':menuId/button/:buttonId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '更新菜单按钮',
+    description: '根据菜单ID和按钮ID更新菜单按钮',
+  })
+  @ApiParam({ name: 'menuId', type: Number, description: '菜单ID' })
+  @ApiParam({ name: 'buttonId', type: Number, description: '按钮ID' })
+  @ApiBody({ type: UpdateMenuButtonDto })
+  @ApiResult({
+    status: 200,
+    description: '更新成功',
+    type: ButtonResponseDto,
+  })
+  @ApiResult({ status: 400, description: '请求参数错误' })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '按钮不存在' })
+  @ApiResult({ status: 409, description: '权限标识已存在或按钮不属于指定菜单' })
+  async updateButton(
+    @Param('menuId', ParseIntPipe) menuId: number,
+    @Param('buttonId', ParseIntPipe) buttonId: number,
+    @Body() updateButtonDto: UpdateMenuButtonDto,
+  ): Promise<{
+    id: number;
+    menuId: number;
+    title: string;
+    authMark: string;
+    sortOrder: number;
+  }> {
+    return this.menuService.updateButton(menuId, buttonId, updateButtonDto);
+  }
+
+  /**
+   * 删除菜单按钮
+   */
+  @Delete(':menuId/button/:buttonId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '删除菜单按钮',
+    description: '根据菜单ID和按钮ID删除菜单按钮',
+  })
+  @ApiParam({ name: 'menuId', type: Number, description: '菜单ID' })
+  @ApiParam({ name: 'buttonId', type: Number, description: '按钮ID' })
+  @ApiResult({
+    status: 200,
+    description: '删除成功',
+  })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '按钮不存在' })
+  @ApiResult({ status: 409, description: '按钮不属于指定菜单' })
+  async removeButton(
+    @Param('menuId', ParseIntPipe) menuId: number,
+    @Param('buttonId', ParseIntPipe) buttonId: number,
+  ): Promise<{
+    id: number;
+    menuId: number;
+    title: string;
+    authMark: string;
+  }> {
+    return this.menuService.removeButton(menuId, buttonId);
   }
 
   /**

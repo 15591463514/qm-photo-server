@@ -8,7 +8,8 @@ const appConfig = registerAs('app', () => ({
   jwtAccessTokenExpiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '2h',
   jwtRefreshTokenExpiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  logLevel: process.env.LOG_LEVEL || 'debug',
+  logLevel: process.env.LOG_LEVEL || 'info',
+  logDir: process.env.LOG_DIR || 'logs',
 }));
 
 export type AppConfig = ReturnType<typeof appConfig>;

@@ -2,6 +2,9 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -55,18 +58,18 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('用户名或密码错误');
+      throw new BadRequestException('用户名或密码错误');
     }
 
     // 验证用户状态
     if (user.status !== EnableStatus.ENABLED) {
-      throw new UnauthorizedException('用户已被禁用');
+      throw new ForbiddenException('用户已被禁用');
     }
 
     // 验证密码（BCrypt）
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('用户名或密码错误');
+      throw new BadRequestException('用户名或密码错误');
     }
 
     // 返回用户信息（排除密码）
@@ -262,8 +265,12 @@ export class AuthService {
       },
     });
 
-    if (!user || user.status !== EnableStatus.ENABLED) {
-      throw new UnauthorizedException('用户不存在或已被禁用');
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+    
+    if (user.status !== EnableStatus.ENABLED) {
+      throw new ForbiddenException('用户已被禁用');
     }
 
     const roles = user.userRoles?.map((ur: any) => ur.role.roleCode) || [];

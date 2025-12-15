@@ -266,8 +266,8 @@ export class MenuService {
     }
 
     // 构建更新数据对象
-    // 排除不需要更新的字段（buttons 单独处理，roles 暂不支持更新）
-    const { buttons, roles, ...menuUpdateFields } = updateMenuDto;
+    // 排除不需要更新的字段（roles 暂不支持更新）
+    const { roles, ...menuUpdateFields } = updateMenuDto;
 
     // 过滤掉 undefined 值，只保留需要更新的字段
     const updateData: Prisma.MenuUpdateInput = {};
@@ -288,26 +288,6 @@ export class MenuService {
       where: { id },
       data: updateData,
     });
-
-    // 更新菜单按钮
-    if (updateMenuDto.buttons !== undefined) {
-      // 删除所有现有按钮
-      await this.prisma.menuButton.deleteMany({
-        where: { menuId: id },
-      });
-
-      // 创建新按钮
-      if (updateMenuDto.buttons.length > 0) {
-        await this.prisma.menuButton.createMany({
-          data: updateMenuDto.buttons.map((btn) => ({
-            menuId: id,
-            title: btn.title!,
-            authMark: btn.authMark!,
-            sortOrder: btn.sortOrder ?? 0,
-          })),
-        });
-      }
-    }
 
     // 清除所有菜单数据缓存
     await this.menuStore.clearAllCacheMenus();
@@ -349,5 +329,197 @@ export class MenuService {
     return plainToInstance(MenuResponseDto, menu, {
       excludeExtraneousValues: false,
     });
+  }
+
+  /**
+   * 创建菜单按钮
+   * @param menuId 菜单ID
+   * @param createButtonDto 创建按钮 DTO
+   * @returns 创建的按钮信息
+   */
+  async createButton(
+    menuId: number,
+    createButtonDto: { title: string; authMark: string; sortOrder?: number },
+  ): Promise<{
+    id: number;
+    menuId: number;
+    title: string;
+    authMark: string;
+    sortOrder: number;
+  }> {
+    // 检查菜单是否存在
+    const menu = await this.prisma.menu.findUnique({
+      where: { id: menuId },
+    });
+
+    if (!menu) {
+      throw new NotFoundException(`菜单 ID ${menuId} 不存在`);
+    }
+
+    // 检查同一菜单下权限标识是否已存在
+    const existingButton = await this.prisma.menuButton.findFirst({
+      where: {
+        menuId,
+        authMark: createButtonDto.authMark,
+      },
+    });
+
+    if (existingButton) {
+      throw new ConflictException(
+        `菜单下权限标识 ${createButtonDto.authMark} 已存在`,
+      );
+    }
+
+    // 创建按钮
+    const button = await this.prisma.menuButton.create({
+      data: {
+        menuId,
+        title: createButtonDto.title,
+        authMark: createButtonDto.authMark,
+        sortOrder: createButtonDto.sortOrder ?? 0,
+      },
+    });
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
+
+    return {
+      id: button.id,
+      menuId: button.menuId,
+      title: button.title,
+      authMark: button.authMark,
+      sortOrder: button.sortOrder,
+    };
+  }
+
+  /**
+   * 更新菜单按钮
+   * @param menuId 菜单ID
+   * @param buttonId 按钮ID
+   * @param updateButtonDto 更新按钮 DTO
+   * @returns 更新后的按钮信息
+   */
+  async updateButton(
+    menuId: number,
+    buttonId: number,
+    updateButtonDto: { title?: string; authMark?: string; sortOrder?: number },
+  ): Promise<{
+    id: number;
+    menuId: number;
+    title: string;
+    authMark: string;
+    sortOrder: number;
+  }> {
+    // 检查按钮是否存在
+    const button = await this.prisma.menuButton.findUnique({
+      where: { id: buttonId },
+    });
+
+    if (!button) {
+      throw new NotFoundException(`按钮 ID ${buttonId} 不存在`);
+    }
+
+    // 检查按钮是否属于指定菜单
+    if (button.menuId !== menuId) {
+      throw new ConflictException(
+        `按钮 ID ${buttonId} 不属于菜单 ID ${menuId}`,
+      );
+    }
+
+    // 如果更新了权限标识，检查同一菜单下新权限标识是否已存在
+    if (
+      updateButtonDto.authMark &&
+      updateButtonDto.authMark !== button.authMark
+    ) {
+      const existingButton = await this.prisma.menuButton.findFirst({
+        where: {
+          menuId,
+          authMark: updateButtonDto.authMark,
+          id: { not: buttonId },
+        },
+      });
+
+      if (existingButton) {
+        throw new ConflictException(
+          `菜单下权限标识 ${updateButtonDto.authMark} 已存在`,
+        );
+      }
+    }
+
+    // 构建更新数据
+    const updateData: {
+      title?: string;
+      authMark?: string;
+      sortOrder?: number;
+    } = {};
+
+    if (updateButtonDto.title !== undefined) {
+      updateData.title = updateButtonDto.title;
+    }
+    if (updateButtonDto.authMark !== undefined) {
+      updateData.authMark = updateButtonDto.authMark;
+    }
+    if (updateButtonDto.sortOrder !== undefined) {
+      updateData.sortOrder = updateButtonDto.sortOrder;
+    }
+
+    // 更新按钮
+    const updatedButton = await this.prisma.menuButton.update({
+      where: { id: buttonId },
+      data: updateData,
+    });
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
+
+    return {
+      id: updatedButton.id,
+      menuId: updatedButton.menuId,
+      title: updatedButton.title,
+      authMark: updatedButton.authMark,
+      sortOrder: updatedButton.sortOrder,
+    };
+  }
+
+  /**
+   * 删除菜单按钮
+   * @param menuId 菜单ID
+   * @param buttonId 按钮ID
+   * @returns 删除的按钮信息
+   */
+  async removeButton(
+    menuId: number,
+    buttonId: number,
+  ): Promise<{ id: number; menuId: number; title: string; authMark: string }> {
+    // 检查按钮是否存在
+    const button = await this.prisma.menuButton.findUnique({
+      where: { id: buttonId },
+    });
+
+    if (!button) {
+      throw new NotFoundException(`按钮 ID ${buttonId} 不存在`);
+    }
+
+    // 检查按钮是否属于指定菜单
+    if (button.menuId !== menuId) {
+      throw new ConflictException(
+        `按钮 ID ${buttonId} 不属于菜单 ID ${menuId}`,
+      );
+    }
+
+    // 删除按钮（级联删除角色按钮关联）
+    await this.prisma.menuButton.delete({
+      where: { id: buttonId },
+    });
+
+    // 清除所有菜单数据缓存
+    await this.menuStore.clearAllCacheMenus();
+
+    return {
+      id: button.id,
+      menuId: button.menuId,
+      title: button.title,
+      authMark: button.authMark,
+    };
   }
 }

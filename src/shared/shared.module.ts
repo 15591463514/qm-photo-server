@@ -12,6 +12,8 @@ import redisConfig, { RedisConfig } from '../config/redis.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
+import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
+import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 
 /**
  * 共享模块 - 包含全局配置和公共服务
@@ -88,6 +90,7 @@ import { RolesGuard } from '@/common/guards/roles.guard';
      * Prisma 异常过滤器
      * 捕获 PrismaClientKnownRequestError，并返回适当的 HTTP 状态码
      * 例如：唯一约束冲突返回 409，记录不存在返回 404 等
+     * 注意：此过滤器优先处理 Prisma 相关异常
      */
     {
       provide: APP_FILTER,
@@ -95,6 +98,26 @@ import { RolesGuard } from '@/common/guards/roles.guard';
         return new PrismaClientExceptionFilter(httpAdapter);
       },
       inject: [HttpAdapterHost],
+    },
+    /**
+     * HTTP 异常过滤器
+     * 统一处理所有 HTTP 异常（BadRequestException, UnauthorizedException 等）
+     * 将异常转换为统一的响应格式 { code, message, data }
+     * 注意：此过滤器在 PrismaClientExceptionFilter 之后执行
+     */
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+    /**
+     * 全局所有异常过滤器
+     * 捕获所有未处理的异常（包括非 HTTP 异常），作为最后一道防线
+     * 将异常转换为统一的响应格式 { code, message, data }
+     * 注意：此过滤器在最后执行，处理所有未被其他过滤器捕获的异常
+     */
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
     },
     /**
      * 全局响应转换拦截器
