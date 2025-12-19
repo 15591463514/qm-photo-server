@@ -261,7 +261,7 @@ export class MenuService {
 
     // 构建更新数据对象
     // 排除不需要更新的字段（roles 暂不支持更新）
-    const { roles, ...menuUpdateFields } = updateMenuDto;
+    const { roles: _, ...menuUpdateFields } = updateMenuDto;
 
     // 过滤掉 undefined 值，只保留需要更新的字段
     const updateData: Prisma.MenuUpdateInput = {};

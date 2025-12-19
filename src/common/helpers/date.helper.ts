@@ -74,3 +74,36 @@ export function toDate(value: Date | string | null | undefined): Date | null {
   }
   return null;
 }
+
+/**
+ * 将时间字符串（如 '2h', '7d'）转换为秒数
+ * 用于解析 JWT Token 过期时间配置
+ * @param timeStr 时间字符串，支持格式：s（秒）、m（分钟）、h（小时）、d（天）
+ * @returns 秒数
+ * @example
+ * parseExpiresIn('2h') // 返回 7200 (2 * 60 * 60)
+ * parseExpiresIn('7d') // 返回 604800 (7 * 24 * 60 * 60)
+ * parseExpiresIn('30m') // 返回 1800 (30 * 60)
+ */
+export function parseExpiresIn(timeStr: string): number {
+  const match = timeStr.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    throw new Error(`Invalid time format: ${timeStr}`);
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  switch (unit) {
+    case 's':
+      return value;
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'd':
+      return value * 24 * 60 * 60;
+    default:
+      throw new Error(`Unknown time unit: ${unit}`);
+  }
+}

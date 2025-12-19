@@ -1,8 +1,8 @@
 {
-  "name": "demo",
+  "name": "qm-photo-server",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "qm-photo服务端",
+  "author": "sqs",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

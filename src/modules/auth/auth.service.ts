@@ -9,6 +9,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'nestjs-prisma';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
@@ -16,6 +17,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtPayload } from '@/common/interfaces/jwt-payload.interface';
 import {
   USER_TOKEN_KEY,
+  USER_REFRESH_TOKEN_KEY,
   USER_VERSION_KEY,
   USER_INFO_KEY,
   USER_PERMISSIONS_KEY,
@@ -25,6 +27,7 @@ import { RegisterDto } from './dto/register.dto';
 import { RegisterResponseDto } from './dto/register-response.dto';
 import { EnableStatus } from '@/common/constants/enums';
 import { UserService } from '@/modules/user/user.service';
+import { parseExpiresIn } from '@/common/helpers/date.helper';
 
 /**
  * 认证服务
@@ -34,6 +37,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @Inject(forwardRef(() => UserService)) private userService: UserService,
   ) {}
@@ -100,36 +104,53 @@ export class AuthService {
       type: 'access',
     };
 
-    // 生成 Access Token（默认过期时间由 JWT 模块配置）
+    // 获取 Token 过期时间配置
+    const accessTokenExpiresIn = this.configService.get<string>(
+      'app.jwtAccessTokenExpiresIn',
+      '2h',
+    );
+    const refreshTokenExpiresIn = this.configService.get<string>(
+      'app.jwtRefreshTokenExpiresIn',
+      '7d',
+    );
+
+    // 生成 Access Token（使用配置的过期时间）
     const accessToken = this.jwtService.sign(payload);
 
-    // 生成 Refresh Token（7天过期）
+    // 生成 Refresh Token（使用配置的过期时间）
     const refreshPayload: JwtPayload = {
       ...payload,
       type: 'refresh',
     };
     const refreshToken = this.jwtService.sign(refreshPayload, {
-      expiresIn: '7d',
+      expiresIn: refreshTokenExpiresIn as any, // JWT 模块接受 string 类型的 expiresIn
     });
 
-    // 计算过期时间（7天，单位：秒）
-    const expiresIn = 7 * 24 * 60 * 60; // 7天
+    // 计算过期时间（单位：秒）
+    const accessTokenExpiresInSeconds = parseExpiresIn(accessTokenExpiresIn);
+    const refreshTokenExpiresInSeconds = parseExpiresIn(refreshTokenExpiresIn);
 
     // 存储到 Redis
     await Promise.all([
-      // 存储 Token
+      // 存储 Access Token（过期时间与 JWT 一致）
       this.cacheManager.set(
         getRedisKey(USER_TOKEN_KEY, userId),
         accessToken,
-        expiresIn * 1000, // 转换为毫秒
+        accessTokenExpiresInSeconds * 1000, // 转换为毫秒
       ),
-      // 存储密码版本号
+      // 存储 Refresh Token（过期时间与 JWT 一致）
+      this.cacheManager.set(
+        getRedisKey(USER_REFRESH_TOKEN_KEY, userId),
+        refreshToken,
+        refreshTokenExpiresInSeconds * 1000, // 转换为毫秒
+      ),
+      // 存储密码版本号（使用 RefreshToken 过期时间，因为密码版本号需要与 RefreshToken 同步）
       this.cacheManager.set(
         getRedisKey(USER_VERSION_KEY, userId),
         '1',
-        expiresIn * 1000,
+        refreshTokenExpiresInSeconds * 1000,
       ),
-      // 存储用户信息（包含角色、权限等）
+      // 存储用户信息（包含角色、权限等，使用 RefreshToken 过期时间）
       this.cacheManager.set(
         getRedisKey(USER_INFO_KEY, userId),
         JSON.stringify({
@@ -139,13 +160,13 @@ export class AuthService {
           buttons: permissions.buttons, // 添加权限列表
           menus: permissions.menus, // 添加菜单列表
         }),
-        expiresIn * 1000,
+        refreshTokenExpiresInSeconds * 1000,
       ),
-      // 存储用户权限信息
+      // 存储用户权限信息（使用 RefreshToken 过期时间）
       this.cacheManager.set(
         getRedisKey(USER_PERMISSIONS_KEY, userId),
         JSON.stringify(permissions),
-        expiresIn * 1000,
+        refreshTokenExpiresInSeconds * 1000,
       ),
     ]);
 
@@ -170,14 +191,15 @@ export class AuthService {
         throw new UnauthorizedException('无效的 Refresh Token');
       }
 
-      // 验证 Token 是否与 Redis 中存储的一致
       const userId = payload.userId;
-      const storedToken = await this.cacheManager.get<string>(
-        getRedisKey(USER_TOKEN_KEY, userId),
+
+      // 验证 Refresh Token 是否与 Redis 中存储的一致
+      const storedRefreshToken = await this.cacheManager.get<string>(
+        getRedisKey(USER_REFRESH_TOKEN_KEY, userId),
       );
 
-      if (!storedToken) {
-        throw new UnauthorizedException('Token 已过期，请重新登录');
+      if (!storedRefreshToken || storedRefreshToken !== refreshToken) {
+        throw new UnauthorizedException('Refresh Token 无效或已过期');
       }
 
       // 验证密码版本号
@@ -198,18 +220,29 @@ export class AuthService {
       };
       const accessToken = this.jwtService.sign(newPayload);
 
-      // 更新 Redis 中的 Token
-      const expiresIn = 7 * 24 * 60 * 60; // 7天
+      // 获取 AccessToken 过期时间配置
+      const accessTokenExpiresIn = this.configService.get<string>(
+        'app.jwtAccessTokenExpiresIn',
+        '2h',
+      );
+      const accessTokenExpiresInSeconds = parseExpiresIn(accessTokenExpiresIn);
+
+      // 更新 Redis 中的 Access Token（Refresh Token 保持不变）
       await this.cacheManager.set(
         getRedisKey(USER_TOKEN_KEY, userId),
         accessToken,
-        expiresIn * 1000,
+        accessTokenExpiresInSeconds * 1000, // 转换为毫秒
       );
 
       return {
         token: accessToken,
       };
-    } catch {
+    } catch (error) {
+      // 如果是 UnauthorizedException，直接抛出
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // 其他错误（如 JWT 验证失败）统一处理
       throw new UnauthorizedException('Refresh Token 无效或已过期');
     }
   }
@@ -278,8 +311,14 @@ export class AuthService {
     // 获取用户权限
     const permissions = await this.userService.getPermissionsForRoles(roles);
 
+    // 获取 RefreshToken 过期时间配置（用户信息使用 RefreshToken 过期时间）
+    const refreshTokenExpiresIn = this.configService.get<string>(
+      'app.jwtRefreshTokenExpiresIn',
+      '7d',
+    );
+    const refreshTokenExpiresInSeconds = parseExpiresIn(refreshTokenExpiresIn);
+
     // 重新存储到 Redis
-    const expiresIn = 7 * 24 * 60 * 60;
     await Promise.all([
       this.cacheManager.set(
         getRedisKey(USER_INFO_KEY, userId),
@@ -290,12 +329,12 @@ export class AuthService {
           buttons: permissions.buttons,
           menus: permissions.menus,
         }),
-        expiresIn * 1000,
+        refreshTokenExpiresInSeconds * 1000,
       ),
       this.cacheManager.set(
         getRedisKey(USER_PERMISSIONS_KEY, userId),
         JSON.stringify(permissions),
-        expiresIn * 1000,
+        refreshTokenExpiresInSeconds * 1000,
       ),
     ]);
 
@@ -367,6 +406,7 @@ export class AuthService {
     // 删除 Redis 中的相关数据
     await Promise.all([
       this.cacheManager.del(getRedisKey(USER_TOKEN_KEY, userId)),
+      this.cacheManager.del(getRedisKey(USER_REFRESH_TOKEN_KEY, userId)),
       this.cacheManager.del(getRedisKey(USER_VERSION_KEY, userId)),
       this.cacheManager.del(getRedisKey(USER_INFO_KEY, userId)),
       this.cacheManager.del(getRedisKey(USER_PERMISSIONS_KEY, userId)),

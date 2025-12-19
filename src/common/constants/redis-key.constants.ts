@@ -4,12 +4,20 @@
  */
 
 /**
- * 用户 Token Key
+ * 用户 Access Token Key
  * 格式: USER_TOKEN_KEY:${userId}
- * 值: JWT Token 字符串
- * 过期时间: 7天（与 JWT Refresh Token 过期时间一致）
+ * 值: JWT Access Token 字符串
+ * 过期时间: 与 JWT AccessToken 过期时间一致（默认 2 小时）
  */
 export const USER_TOKEN_KEY = 'user:token';
+
+/**
+ * 用户 Refresh Token Key
+ * 格式: USER_REFRESH_TOKEN_KEY:${userId}
+ * 值: JWT Refresh Token 字符串
+ * 过期时间: 7天（与 Refresh Token 过期时间一致）
+ */
+export const USER_REFRESH_TOKEN_KEY = 'user:refresh_token';
 
 /**
  * 用户密码版本号 Key
