@@ -81,6 +81,22 @@ export const ROLE_KEY = 'role';
 export const DICT_KEY = 'dict';
 
 /**
+ * 限流 Key
+ * 格式: THROTTLE_KEY:${userName}_${suffix}
+ * 值: 限流信息的 JSON 字符串
+ * 过期时间: 7天
+ */
+export const THROTTLE_KEY = 'throttle';
+
+/**
+ * 限流记录 Key
+ * 格式: THROTTLE_KEY:${userName}_${suffix}
+ * 值: 限流信息的 JSON 字符串
+ * 过期时间: 7天
+ */
+export const THROTTLE_RECORD_KEY = 'throttle_record';
+
+/**
  * 生成完整的 Redis Key
  * @param prefix Key 前缀
  * @param suffix Key 后缀（通常是 userId 或其他标识符，支持 string 或 number）

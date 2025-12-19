@@ -92,6 +92,33 @@ import { CacheThrottlerStorage } from '@/common/storage/throttle';
         return winstonConfig(nodeEnv, logLevel);
       },
     }),
+    /**
+     * Throttler 模块
+     * 注意：限流基于 IP + 路径，不同接口的限流是独立的
+     */
+    ThrottlerModule.forRootAsync({
+      inject: [CACHE_MANAGER],
+      useFactory: (cacheManager: Cache) => {
+        return {
+          errorMessage: '请求过于频繁，请稍后再试',
+          storage: new CacheThrottlerStorage(cacheManager),
+          throttlers: [
+            {
+              ttl: 1000,
+              limit: 3,
+            },
+            {
+              ttl: 10000,
+              limit: 30,
+            },
+            {
+              ttl: 60000,
+              limit: 50,
+            },
+          ],
+        };
+      },
+    }),
   ],
   providers: [
     /**
@@ -171,6 +198,15 @@ import { CacheThrottlerStorage } from '@/common/storage/throttle';
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard,
+    },
+    /**
+     * 全局限流守卫（自定义）
+     * 基于 IP + 路径进行限流，防止同一接口连续调用
+     * 不同接口的限流是独立的，不会相互影响
+     */
+    {
+      provide: APP_GUARD,
+      useClass: CustomThrottlerGuard,
     },
   ],
   exports: [ConfigModule, PrismaModule, CacheManagerModule],
