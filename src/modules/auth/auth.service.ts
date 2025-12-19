@@ -268,7 +268,7 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
-    
+
     if (user.status !== EnableStatus.ENABLED) {
       throw new ForbiddenException('用户已被禁用');
     }
@@ -326,13 +326,28 @@ export class AuthService {
     // 加密密码
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
-    // 创建用户
+    // 查找默认角色（普通用户角色）
+    const defaultRole = await this.prisma.role.findUnique({
+      where: { roleCode: 'user' },
+      select: { roleId: true },
+    });
+
+    if (!defaultRole) {
+      throw new NotFoundException('默认角色 user 不存在，请联系管理员');
+    }
+
+    // 创建用户并分配默认角色
     const user = await this.prisma.user.create({
       data: {
         userName: registerDto.username,
         password: hashedPassword,
         status: EnableStatus.ENABLED, // 默认启用
         userGender: 'unknown', // 默认未知
+        userRoles: {
+          create: {
+            roleId: defaultRole.roleId,
+          },
+        },
       },
     });
 

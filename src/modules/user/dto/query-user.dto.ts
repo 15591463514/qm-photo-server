@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsInt, IsDateString } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 
 /**
@@ -8,36 +9,21 @@ import { PaginationDto } from '@/common/dto/pagination.dto';
  */
 export class QueryUserDto extends PaginationDto {
   @ApiPropertyOptional({
-    description: '用户名（模糊查询）',
+    description: '名称（用户名或昵称模糊查询）',
     example: 'admin',
   })
   @IsString()
   @IsOptional()
-  userName?: string;
+  name?: string;
 
   @ApiPropertyOptional({
-    description: '昵称（模糊查询）',
-    example: '管理员',
+    description: '角色ID',
+    example: 1,
   })
-  @IsString()
+  @IsInt()
   @IsOptional()
-  nickName?: string;
-
-  @ApiPropertyOptional({
-    description: '邮箱（模糊查询）',
-    example: 'admin@example.com',
-  })
-  @IsString()
-  @IsOptional()
-  email?: string;
-
-  @ApiPropertyOptional({
-    description: '手机号（模糊查询）',
-    example: '13800138000',
-  })
-  @IsString()
-  @IsOptional()
-  userPhone?: string;
+  @Type(() => Number)
+  roleId?: number;
 
   @ApiPropertyOptional({
     description: '状态',
@@ -47,4 +33,28 @@ export class QueryUserDto extends PaginationDto {
   @IsIn(['1', '2'], { message: '状态只能是 1（启用）或 2（禁用）' })
   @IsOptional()
   status?: string;
+
+  @ApiPropertyOptional({
+    description: '性别',
+    example: 'male',
+  })
+  @IsString()
+  @IsOptional()
+  userGender?: string;
+
+  @ApiPropertyOptional({
+    description: '创建时间开始（注册日期开始）',
+    example: '2024-01-01',
+  })
+  @IsDateString()
+  @IsOptional()
+  startTime?: string;
+
+  @ApiPropertyOptional({
+    description: '创建时间结束（注册日期结束）',
+    example: '2024-12-31',
+  })
+  @IsDateString()
+  @IsOptional()
+  endTime?: string;
 }

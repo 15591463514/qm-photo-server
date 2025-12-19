@@ -34,6 +34,7 @@ import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { MenuService } from '../menu/menu.service';
+import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 
 @ApiTags('用户管理')
 @Controller('user')
@@ -92,6 +93,7 @@ export class UserController {
    * 获取用户列表（分页）
    */
   @Get('list')
+  @RequiresPermissions('user:view')
   @ApiOperation({
     summary: '获取用户列表（分页）',
     description: '分页获取用户列表，支持按用户名、昵称、邮箱、手机号、状态筛选',
@@ -113,6 +115,7 @@ export class UserController {
    * 创建用户
    */
   @Post()
+  @RequiresPermissions('user:add')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '创建用户',
@@ -138,6 +141,7 @@ export class UserController {
    * 更新用户
    */
   @Put(':id')
+  @RequiresPermissions('user:edit')
   @ApiOperation({
     summary: '更新用户',
     description: '根据 ID 更新用户信息',
@@ -164,6 +168,7 @@ export class UserController {
    * 删除用户
    */
   @Delete(':id')
+  @RequiresPermissions('user:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除用户',

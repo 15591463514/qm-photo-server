@@ -7,10 +7,11 @@ import {
   IsBoolean,
   MaxLength,
   Min,
+  Matches,
 } from 'class-validator';
 import {
-  IsDictCode,
   IsDictValue,
+  IsDictName,
 } from '@/common/validators/dict-code.validator';
 
 /**
@@ -18,48 +19,55 @@ import {
  */
 export class CreateDictDto {
   @ApiProperty({
-    description: '字典类型编码',
+    description: '字典类型编码（字母、短横线、下划线、数字，最大16字符）',
     example: 'user_status',
-    maxLength: 100,
+    maxLength: 16,
   })
   @IsString({ message: '字典类型编码必须是字符串' })
   @IsNotEmpty({ message: '字典类型编码不能为空' })
-  @MaxLength(100, { message: '字典类型编码长度不能超过100个字符' })
-  @IsDictCode({
-    message: '字典类型编码只能包含小写字母和下划线，且不能以下划线开头或结尾',
+  @MaxLength(16, { message: '字典类型编码不能超过16个字符' })
+  @Matches(/^[a-z0-9_-]+$/, {
+    message: '字典类型编码只能包含字母、短横线、下划线和数字',
   })
   typeCode: string;
 
   @ApiProperty({
-    description: '字典类型名称',
+    description: '字典类型名称（不可输入特殊字符和emoji，最大16字符）',
     example: '用户状态',
-    maxLength: 100,
+    maxLength: 16,
   })
   @IsString({ message: '字典类型名称必须是字符串' })
   @IsNotEmpty({ message: '字典类型名称不能为空' })
-  @MaxLength(100, { message: '字典类型名称长度不能超过100个字符' })
+  @MaxLength(16, { message: '字典类型名称不能超过16个字符' })
+  @IsDictName({
+    message: '字典类型名称不能包含特殊字符和emoji',
+  })
   typeName: string;
 
   @ApiProperty({
-    description: '字典标签（显示名称）',
+    description: '字典标签（不可输入特殊字符和emoji，最大16字符）',
     example: '启用',
-    maxLength: 100,
+    maxLength: 16,
   })
   @IsString({ message: '字典标签必须是字符串' })
   @IsNotEmpty({ message: '字典标签不能为空' })
-  @MaxLength(100, { message: '字典标签长度不能超过100个字符' })
+  @MaxLength(16, { message: '字典标签不能超过16个字符' })
+  @IsDictName({
+    message: '字典标签不能包含特殊字符和emoji',
+  })
   dataLabel: string;
 
   @ApiProperty({
-    description: '字典值',
+    description: '字典值（字母、短横线、下划线、数字，最大16字符）',
     example: '1',
-    maxLength: 100,
+    maxLength: 16,
   })
   @IsString({ message: '字典值必须是字符串' })
   @IsNotEmpty({ message: '字典值不能为空' })
-  @MaxLength(100, { message: '字典值长度不能超过100个字符' })
+  @MaxLength(16, { message: '字典值不能超过16个字符' })
   @IsDictValue({
-    message: '字典值只能包含小写字母、数字和下划线，且不能以下划线开头或结尾',
+    message:
+      '字典值只能包含字母、短横线、下划线和数字，且不能以下划线开头或结尾',
   })
   dataValue: string;
 
@@ -83,13 +91,16 @@ export class CreateDictDto {
   status?: string;
 
   @ApiPropertyOptional({
-    description: '标签样式',
+    description: '标签样式（字母、短横线、下划线、数字，最大16字符）',
     example: 'success',
-    maxLength: 100,
+    maxLength: 16,
   })
   @IsString({ message: '标签样式必须是字符串' })
   @IsOptional()
-  @MaxLength(100, { message: '标签样式长度不能超过100个字符' })
+  @MaxLength(16, { message: '标签样式不能超过16个字符' })
+  @Matches(/^[a-z0-9_-]+$/, {
+    message: '标签样式只能包含字母、短横线、下划线和数字',
+  })
   tagStyle?: string;
 
   @ApiPropertyOptional({

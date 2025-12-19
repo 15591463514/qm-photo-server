@@ -233,6 +233,9 @@ export class DictService {
       },
     });
 
+    // 清除字典缓存
+    await this.dictStore.clearAllCacheDicts();
+
     return plainToInstance(DictResponseDto, result, {
       excludeExtraneousValues: false,
     });
@@ -367,6 +370,9 @@ export class DictService {
       data: updateData,
     });
 
+    // 清除字典缓存
+    await this.dictStore.clearAllCacheDicts();
+
     return plainToInstance(DictResponseDto, result, {
       excludeExtraneousValues: false,
     });
@@ -391,6 +397,9 @@ export class DictService {
     await this.prisma.dict.delete({
       where: { id },
     });
+
+    // 清除字典缓存
+    await this.dictStore.clearAllCacheDicts();
 
     return plainToInstance(DictResponseDto, existingDict, {
       excludeExtraneousValues: false,
@@ -452,6 +461,9 @@ export class DictService {
       where: { typeCode },
       data: updateData,
     });
+
+    // 清除字典缓存
+    await this.dictStore.clearAllCacheDicts();
   }
 
   /**
@@ -473,6 +485,9 @@ export class DictService {
     const result = await this.prisma.dict.deleteMany({
       where: { typeCode },
     });
+
+    // 清除字典缓存
+    await this.dictStore.clearAllCacheDicts();
 
     return result.count;
   }

@@ -32,6 +32,7 @@ import { ButtonResponseDto } from './dto/button-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 
 @ApiTags('菜单管理')
 @Controller('menu')
@@ -44,6 +45,7 @@ export class MenuController {
    * 获取菜单树形结构
    */
   @Get('tree')
+  @RequiresPermissions('menu:view')
   @ApiOperation({
     summary: '获取菜单树形结构',
     description: '获取菜单树形结构，支持按菜单名称、路由路径、状态筛选',
@@ -64,6 +66,7 @@ export class MenuController {
    * 获取菜单详情
    */
   @Get(':id')
+  @RequiresPermissions('menu:view')
   @ApiOperation({
     summary: '获取菜单详情',
     description: '根据菜单ID获取菜单详情',
@@ -86,6 +89,7 @@ export class MenuController {
    * 创建菜单
    */
   @Post()
+  @RequiresPermissions('menu:add')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '创建菜单',
@@ -112,6 +116,7 @@ export class MenuController {
    * 更新菜单
    */
   @Put(':id')
+  @RequiresPermissions('menu:edit')
   @ApiOperation({
     summary: '更新菜单',
     description: '根据菜单ID更新菜单信息',
@@ -139,6 +144,7 @@ export class MenuController {
    * 创建菜单按钮
    */
   @Post(':menuId/button')
+  @RequiresPermissions('menu:button:add')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '创建菜单按钮',
@@ -172,6 +178,7 @@ export class MenuController {
    * 更新菜单按钮
    */
   @Put(':menuId/button/:buttonId')
+  @RequiresPermissions('menu:button:edit')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '更新菜单按钮',
@@ -207,6 +214,7 @@ export class MenuController {
    * 删除菜单按钮
    */
   @Delete(':menuId/button/:buttonId')
+  @RequiresPermissions('menu:button:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除菜单按钮',
@@ -237,6 +245,7 @@ export class MenuController {
    * 删除菜单
    */
   @Delete(':id')
+  @RequiresPermissions('menu:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除菜单',

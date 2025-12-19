@@ -143,6 +143,9 @@ export class RoleService {
       },
     });
 
+    // 清除角色缓存
+    await this.roleStore.clearAllCacheRoles();
+
     return plainToInstance(RoleResponseDto, result, {
       excludeExtraneousValues: false,
     });
@@ -203,6 +206,9 @@ export class RoleService {
       data: updateData,
     });
 
+    // 清除角色缓存
+    await this.roleStore.clearAllCacheRoles();
+
     return plainToInstance(RoleResponseDto, result, {
       excludeExtraneousValues: false,
     });
@@ -235,6 +241,9 @@ export class RoleService {
     const result = await this.prisma.role.delete({
       where: { roleId },
     });
+
+    // 清除角色缓存
+    await this.roleStore.clearAllCacheRoles();
 
     return plainToInstance(RoleResponseDto, result, {
       excludeExtraneousValues: false,
@@ -348,16 +357,22 @@ export class RoleService {
           throw new NotFoundException(`菜单 ID ${permission.menuId} 不存在`);
         }
 
-        // 只要权限项在列表中，就表示有菜单权限
-        // 添加菜单权限
-        menuPermissionsToCreate.push({
-          roleId,
-          menuId: permission.menuId,
-        });
+        // 判断是否有菜单权限（明确标识有菜单权限时才创建）
+        const hasMenuPermission = permission.hasMenuPermission ?? false;
+        const hasButtonPermissions =
+          permission.buttonIds && permission.buttonIds.length > 0;
+
+        // 只有明确标识有菜单权限时，才创建菜单权限
+        if (hasMenuPermission) {
+          menuPermissionsToCreate.push({
+            roleId,
+            menuId: permission.menuId,
+          });
+        }
 
         // 如果有按钮权限，验证并添加按钮权限
-        if (permission.buttonIds && permission.buttonIds.length > 0) {
-          for (const buttonId of permission.buttonIds) {
+        if (hasButtonPermissions) {
+          for (const buttonId of permission.buttonIds!) {
             const button = await tx.menuButton.findUnique({
               where: { id: buttonId },
             });
@@ -395,6 +410,9 @@ export class RoleService {
         });
       }
     });
+
+    // 清除角色缓存
+    await this.roleStore.clearAllCacheRoles();
 
     // 清除所有拥有该角色的用户的缓存（权限变更后需要清除）
     await this.clearUsersCacheByRole(roleId);

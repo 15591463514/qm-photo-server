@@ -7,6 +7,7 @@ import {
   IsIn,
   MinLength,
   Matches,
+  MaxLength,
 } from 'class-validator';
 
 /**
@@ -35,11 +36,16 @@ export class CreateUserDto {
   password: string;
 
   @ApiPropertyOptional({
-    description: '昵称',
+    description: '昵称（不能包含空格，最大16个字符）',
     example: '管理员',
+    maxLength: 16,
   })
   @IsString()
   @IsOptional()
+  @MaxLength(16, { message: '昵称不能超过16个字符' })
+  @Matches(/^\S+$/, {
+    message: '昵称不能包含空格',
+  })
   nickName?: string;
 
   @ApiPropertyOptional({

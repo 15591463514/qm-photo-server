@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -19,6 +20,15 @@ export class RolePermissionItemDto {
   @IsInt({ message: '菜单ID必须是整数' })
   @IsNotEmpty({ message: '菜单ID不能为空' })
   menuId: number;
+
+  @ApiPropertyOptional({
+    description: '是否有菜单权限',
+    example: true,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'hasMenuPermission 必须是布尔值' })
+  hasMenuPermission?: boolean;
 
   @ApiPropertyOptional({
     description: '按钮ID列表',

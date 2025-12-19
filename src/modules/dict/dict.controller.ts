@@ -31,15 +31,18 @@ import { DictTreeResponseDto } from './dto/dict-tree-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
+import { Public } from '@/common/decorators/public.decorator';
 
 @ApiTags('字典管理')
 @Controller('dict')
-@UseGuards(JwtAuthGuard) // 所有接口都需要 JWT 认证
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DictController {
   constructor(private readonly dictService: DictService) {}
 
   @Get('tree')
+  @Public()
   @ApiOperation({
     summary: '获取字典树形结构',
     description:
@@ -58,6 +61,7 @@ export class DictController {
   }
 
   @Get('data/:typeCode')
+  @Public()
   @ApiOperation({
     summary: '根据字典类型获取字典数据',
     description: '根据字典类型编码获取该类型下的所有字典数据',
@@ -82,6 +86,7 @@ export class DictController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({
     summary: '获取字典详情',
     description: '根据 ID 获取字典详细信息',
@@ -99,6 +104,7 @@ export class DictController {
   }
 
   @Post()
+  @RequiresPermissions('dict:add')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '创建字典',
@@ -121,6 +127,7 @@ export class DictController {
   }
 
   @Put(':id')
+  @RequiresPermissions('dict:edit')
   @ApiOperation({
     summary: '更新字典',
     description: '根据 ID 更新字典信息',
@@ -145,6 +152,7 @@ export class DictController {
   }
 
   @Delete(':id')
+  @RequiresPermissions('dict:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除字典',
@@ -163,6 +171,7 @@ export class DictController {
   }
 
   @Put('type/:typeCode')
+  @RequiresPermissions('dict:type:edit')
   @ApiOperation({
     summary: '更新字典类型',
     description: '根据类型编码更新字典类型信息（会更新该类型下所有字典记录）',
@@ -186,6 +195,7 @@ export class DictController {
   }
 
   @Delete('type/:typeCode')
+  @RequiresPermissions('dict:type:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除字典类型',

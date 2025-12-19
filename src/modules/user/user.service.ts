@@ -163,7 +163,7 @@ export class UserService {
       }
     }
 
-    // 查询所有有菜单权限的菜单（即使没有按钮权限）
+    // 查询所有有菜单权限的菜单（只从 RoleMenu 表查询，确保只有菜单权限的菜单才返回）
     const roleMenus = await this.prisma.roleMenu.findMany({
       where: {
         roleId: { in: roleIds },
@@ -173,14 +173,9 @@ export class UserService {
       },
     });
 
-    // 从视图数据中提取菜单信息（去重，视图已包含菜单基本信息）
-    const menuIdSetFromView = new Set<number>();
-    viewData.forEach((v) => menuIdSetFromView.add(v.menuId));
-
-    // 收集所有有权限的菜单ID（包括只有菜单权限的）
+    // 菜单列表：只包含有菜单权限的菜单（从 roleMenus 获取）
     const menuIdSet = new Set<number>();
     roleMenus.forEach((rm) => menuIdSet.add(rm.menuId));
-    menuIdSetFromView.forEach((menuId) => menuIdSet.add(menuId));
 
     if (menuIdSet.size === 0) {
       return { menus: [], buttons: [] };
@@ -200,10 +195,11 @@ export class UserService {
       orderBy: [{ sortOrder: 'asc' }, { createTime: 'asc' }],
     });
 
-    // 从视图数据构建菜单信息映射（使用视图中的菜单数据）
+    // 从视图数据构建菜单信息映射（只包含有菜单权限的菜单）
     const menuMapFromView = new Map<number, any>();
     for (const item of viewData) {
-      if (!menuMapFromView.has(item.menuId)) {
+      // 只处理有菜单权限的菜单（在 menuIdSet 中）
+      if (menuIdSet.has(item.menuId) && !menuMapFromView.has(item.menuId)) {
         menuMapFromView.set(item.menuId, {
           id: item.menuId,
           name: item.menuName,
@@ -219,7 +215,7 @@ export class UserService {
     // 合并视图数据和数据库数据，补充 parentId 和 sortOrder
     const menuMap = new Map<number, any>();
 
-    // 先处理有视图数据的菜单
+    // 先处理有视图数据的菜单（既有菜单权限又有按钮权限）
     for (const menu of menusFromDb) {
       const viewMenu = menuMapFromView.get(menu.id);
       if (viewMenu) {
@@ -270,8 +266,25 @@ export class UserService {
       }
     }
 
-    // 构建按钮权限集合
-    const buttonList = viewData.map((item) => item.buttonAuthMark);
+    // 构建按钮权限集合（从所有按钮权限中提取，即使没有菜单权限也要包含）
+    // 查询所有有按钮权限的记录（包括只有按钮权限的）
+    const allRoleMenuButtons = await this.prisma.roleMenuButton.findMany({
+      where: {
+        roleId: { in: roleIds },
+      },
+      include: {
+        button: {
+          select: {
+            authMark: true,
+          },
+        },
+      },
+    });
+
+    // 提取所有按钮权限标识
+    const buttonList = allRoleMenuButtons
+      .map((rmb) => rmb.button?.authMark)
+      .filter((authMark): authMark is string => !!authMark);
 
     // 构建菜单列表
     const menuList = Array.from(menuMap.values());
@@ -292,39 +305,68 @@ export class UserService {
       take,
       current,
       size,
-      userName,
-      nickName,
-      email,
-      userPhone,
+      name,
+      roleId,
       status,
+      userGender,
+      startTime,
+      endTime,
     } = query;
 
     // 构建查询条件
     const where: Prisma.UserWhereInput = {};
 
-    // 添加过滤条件
-    if (userName) {
-      where.userName = {
-        contains: userName,
-      };
+    // 名称模糊查询（用户名或昵称）
+    if (name && name.trim()) {
+      where.OR = [
+        {
+          userName: {
+            contains: name.trim(),
+          },
+        },
+        {
+          nickName: {
+            contains: name.trim(),
+          },
+        },
+      ];
     }
-    if (nickName) {
-      where.nickName = {
-        contains: nickName,
-      };
+
+    // 角色过滤
+    if (roleId !== undefined && roleId !== null) {
+      const roleIdNum =
+        typeof roleId === 'string' ? parseInt(roleId, 10) : roleId;
+      if (!isNaN(roleIdNum)) {
+        where.userRoles = {
+          some: {
+            roleId: roleIdNum,
+          },
+        };
+      }
     }
-    if (email) {
-      where.email = {
-        contains: email,
-      };
-    }
-    if (userPhone) {
-      where.userPhone = {
-        contains: userPhone,
-      };
-    }
+
+    // 状态过滤
     if (status) {
       where.status = status;
+    }
+
+    // 性别过滤
+    if (userGender) {
+      where.userGender = userGender;
+    }
+
+    // 日期范围过滤（注册日期，即创建日期）
+    if (startTime || endTime) {
+      where.createTime = {};
+      if (startTime) {
+        where.createTime.gte = new Date(startTime);
+      }
+      if (endTime) {
+        // 结束日期需要包含当天的23:59:59
+        const endDate = new Date(endTime);
+        endDate.setHours(23, 59, 59, 999);
+        where.createTime.lte = endDate;
+      }
     }
 
     // 并行查询数据和总数

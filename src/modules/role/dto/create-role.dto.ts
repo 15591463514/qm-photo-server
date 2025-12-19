@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsBoolean,
   MaxLength,
+  Matches,
 } from 'class-validator';
 
 /**
@@ -22,13 +23,16 @@ export class CreateRoleDto {
   roleName: string;
 
   @ApiProperty({
-    description: '角色编码（唯一）',
+    description: '角色编码（唯一，只能是小写字母，最大16个字符）',
     example: 'admin',
-    maxLength: 50,
+    maxLength: 16,
   })
   @IsString({ message: '角色编码必须是字符串' })
   @IsNotEmpty({ message: '角色编码不能为空' })
-  @MaxLength(50, { message: '角色编码长度不能超过50个字符' })
+  @MaxLength(16, { message: '角色编码不能超过16个字符' })
+  @Matches(/^[a-z]+$/, {
+    message: '角色编码只能包含小写字母',
+  })
   roleCode: string;
 
   @ApiPropertyOptional({

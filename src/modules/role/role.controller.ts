@@ -32,6 +32,7 @@ import {
 } from './dto/role-permissions.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 
 @ApiTags('角色管理')
 @Controller('role')
@@ -44,6 +45,7 @@ export class RoleController {
    * 获取角色列表
    */
   @Get('list')
+  @RequiresPermissions('role:view')
   @ApiOperation({
     summary: '获取角色列表',
     description:
@@ -65,6 +67,7 @@ export class RoleController {
    * 获取角色详情
    */
   @Get(':id')
+  @RequiresPermissions('role:view')
   @ApiOperation({
     summary: '获取角色详情',
     description: '根据 ID 获取角色详细信息',
@@ -85,6 +88,7 @@ export class RoleController {
    * 创建角色
    */
   @Post()
+  @RequiresPermissions('role:add')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: '创建角色',
@@ -107,6 +111,7 @@ export class RoleController {
    * 更新角色
    */
   @Put(':id')
+  @RequiresPermissions('role:edit')
   @ApiOperation({
     summary: '更新角色',
     description: '根据 ID 更新角色信息',
@@ -133,6 +138,7 @@ export class RoleController {
    * 删除角色
    */
   @Delete(':id')
+  @RequiresPermissions('role:delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '删除角色',
@@ -155,6 +161,7 @@ export class RoleController {
    * 获取角色权限
    */
   @Get(':id/permissions')
+  @RequiresPermissions('role:auth')
   @ApiOperation({
     summary: '获取角色权限',
     description: '获取指定角色的菜单和按钮权限',
@@ -175,6 +182,7 @@ export class RoleController {
    * 分配角色权限
    */
   @Post(':id/permissions')
+  @RequiresPermissions('role:auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '分配角色权限',

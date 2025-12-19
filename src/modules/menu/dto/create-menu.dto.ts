@@ -8,6 +8,7 @@ import {
   IsArray,
   MaxLength,
   Min,
+  Matches,
 } from 'class-validator';
 
 /**
@@ -25,13 +26,16 @@ export class CreateMenuButtonDto {
   title: string;
 
   @ApiProperty({
-    description: '权限标识',
-    example: 'add',
-    maxLength: 100,
+    description: '权限标识（字母、短横线、下划线、数字、冒号，最大30字符）',
+    example: 'user:add',
+    maxLength: 30,
   })
   @IsString({ message: '权限标识必须是字符串' })
   @IsNotEmpty({ message: '权限标识不能为空' })
-  @MaxLength(100, { message: '权限标识长度不能超过100个字符' })
+  @MaxLength(30, { message: '权限标识不能超过30个字符' })
+  @Matches(/^[a-z0-9_:-]+$/, {
+    message: '权限标识只能包含字母、短横线、下划线、数字和冒号',
+  })
   authMark: string;
 
   @ApiPropertyOptional({
@@ -70,23 +74,29 @@ export class CreateMenuDto {
   name: string;
 
   @ApiProperty({
-    description: '路由路径',
+    description: '路由路径（只能包含 /、字母、数字、下划线、横线）',
     example: '/system/user',
     maxLength: 200,
   })
   @IsString({ message: '路由路径必须是字符串' })
   @IsNotEmpty({ message: '路由路径不能为空' })
   @MaxLength(200, { message: '路由路径长度不能超过200个字符' })
+  @Matches(/^[/a-zA-Z0-9_-]+$/, {
+    message: '路由路径只能包含 /、字母、数字、下划线和横线',
+  })
   path: string;
 
   @ApiPropertyOptional({
-    description: '组件路径',
+    description: '组件路径（只能包含 /、字母、数字、下划线、横线）',
     example: '/system/user/index',
     maxLength: 500,
   })
   @IsString({ message: '组件路径必须是字符串' })
   @IsOptional()
   @MaxLength(500, { message: '组件路径长度不能超过500个字符' })
+  @Matches(/^[/a-zA-Z0-9_-]+$/, {
+    message: '组件路径只能包含 /、字母、数字、下划线和横线',
+  })
   component?: string;
 
   @ApiProperty({
@@ -174,13 +184,16 @@ export class CreateMenuDto {
   fixedTab?: boolean;
 
   @ApiPropertyOptional({
-    description: '激活路径',
+    description: '激活路径（只能包含 /、字母、数字、下划线、横线）',
     example: '/system/user',
     maxLength: 200,
   })
   @IsString({ message: '激活路径必须是字符串' })
   @IsOptional()
   @MaxLength(200, { message: '激活路径长度不能超过200个字符' })
+  @Matches(/^[/a-zA-Z0-9_-]+$/, {
+    message: '激活路径只能包含 /、字母、数字、下划线和横线',
+  })
   activePath?: string;
 
   @ApiPropertyOptional({
@@ -229,4 +242,3 @@ export class CreateMenuDto {
   @IsOptional()
   buttons?: CreateMenuButtonDto[];
 }
-

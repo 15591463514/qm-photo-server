@@ -1,6 +1,10 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CacheModule as CacheManagerModule } from '@nestjs/cache-manager';
+import {
+  CacheModule as CacheManagerModule,
+  Cache,
+  CACHE_MANAGER,
+} from '@nestjs/cache-manager';
 import { PrismaModule } from 'nestjs-prisma';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
@@ -12,8 +16,14 @@ import redisConfig, { RedisConfig } from '../config/redis.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
+import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
+import { winstonConfig } from '@/common/logger/winston.config';
+import { WinstonModule } from 'nest-winston';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { CustomThrottlerGuard } from '@/common/guards/custom-throttler.guard';
+import { CacheThrottlerStorage } from '@/common/storage/throttle';
 
 /**
  * 共享模块 - 包含全局配置和公共服务
@@ -69,6 +79,17 @@ import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
           ],
           errorFormat: 'pretty',
         },
+      },
+    }),
+    /**
+     * Winston 模块
+     */
+    WinstonModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const nodeEnv = configService.get<string>('app.nodeEnv', 'development');
+        const logLevel = configService.get<string>('app.logLevel', 'info');
+        return winstonConfig(nodeEnv, logLevel);
       },
     }),
   ],
@@ -141,6 +162,15 @@ import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    /**
+     * 全局权限守卫
+     * 验证用户是否拥有所需权限（通过 @RequiresPermissions() 装饰器指定）
+     * 注意：权限守卫在角色守卫之后执行
+     */
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
   ],
   exports: [ConfigModule, PrismaModule, CacheManagerModule],
