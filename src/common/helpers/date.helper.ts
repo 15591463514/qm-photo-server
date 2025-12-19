@@ -38,7 +38,7 @@ export function utcToLocal(
 
     // 返回简单的时间格式：YYYY-MM-DD HH:mm:ss
     return localDate.format('YYYY-MM-DD HH:mm:ss');
-  } catch (error) {
+  } catch {
     return null;
   }
 }

@@ -209,7 +209,7 @@ export class AuthService {
       return {
         token: accessToken,
       };
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Refresh Token 无效或已过期');
     }
   }

@@ -13,8 +13,9 @@ const baseTypeNames = ['String', 'Number', 'Boolean'];
  * ApiResult 装饰器选项
  * 兼容 ApiResponse 的所有属性，并添加自定义选项
  */
-export interface ApiResultOptions<TModel extends Type<any> = any>
-  extends Partial<Omit<ApiResponseOptions, 'type' | 'schema'>> {
+export interface ApiResultOptions<
+  TModel extends Type<any> = any,
+> extends Partial<Omit<ApiResponseOptions, 'type' | 'schema'>> {
   /** 响应数据类型，可以是单个类型或数组类型 */
   type?: TModel | TModel[];
   /** 是否为分页响应 */

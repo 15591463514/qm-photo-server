@@ -26,7 +26,7 @@ import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationPipe } from '@/common/pipes/pagination.pipe';
 import { QueryTestDto } from './dto/query-test.dto';
-import { CacheTTL, CacheInterceptor, CacheKey } from '@nestjs/cache-manager';
+import { CacheTTL, CacheInterceptor } from '@nestjs/cache-manager';
 
 @ApiTags('测试')
 @Controller('test')

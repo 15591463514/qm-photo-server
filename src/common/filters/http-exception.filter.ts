@@ -3,7 +3,6 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
-  HttpStatus,
   Inject,
 } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -13,13 +12,13 @@ import { ResOp } from '../class/api-response.class';
 
 /**
  * 全局 HTTP 异常过滤器
- * 
+ *
  * 功能：
  * 1. 统一处理所有 HTTP 异常
  * 2. 将异常转换为统一的响应格式 { code, message, data }
  * 3. 处理 ValidationPipe 的错误（数组格式的 message）
  * 4. 使用 Winston 记录错误日志
- * 
+ *
  * 注意：
  * - 此过滤器处理 HttpException 及其子类（BadRequestException, UnauthorizedException 等）
  * - PrismaClientExceptionFilter 会优先处理 Prisma 相关异常
@@ -44,9 +43,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (typeof exceptionResponse === 'string') {
       // 简单字符串错误消息
       message = exceptionResponse;
-    } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+    } else if (
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null
+    ) {
       const responseObj = exceptionResponse as any;
-      
+
       // 处理 ValidationPipe 的错误格式
       // ValidationPipe 返回格式: { message: string[], error: string, statusCode: number }
       if (Array.isArray(responseObj.message)) {
@@ -89,8 +91,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // 转换为统一格式并返回
     const errorResponse = ResOp.error(status, message);
-    
+
     response.status(status).json(errorResponse);
   }
 }
-

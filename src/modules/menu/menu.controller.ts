@@ -31,7 +31,6 @@ import { MenuResponseDto } from './dto/menu-response.dto';
 import { ButtonResponseDto } from './dto/button-response.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
-import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 
 @ApiTags('菜单管理')
@@ -105,11 +104,8 @@ export class MenuController {
   @ApiResult({ status: 401, description: '未授权' })
   @ApiResult({ status: 404, description: '父菜单不存在' })
   @ApiResult({ status: 409, description: '路径已存在' })
-  async create(
-    @Body() createMenuDto: CreateMenuDto,
-    @CurrentUser('userId') userId?: number,
-  ): Promise<MenuResponseDto> {
-    return this.menuService.create(createMenuDto, userId);
+  async create(@Body() createMenuDto: CreateMenuDto): Promise<MenuResponseDto> {
+    return this.menuService.create(createMenuDto);
   }
 
   /**
@@ -135,9 +131,8 @@ export class MenuController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateMenuDto: UpdateMenuDto,
-    @CurrentUser('userId') userId?: number,
   ): Promise<MenuResponseDto> {
-    return this.menuService.update(id, updateMenuDto, userId);
+    return this.menuService.update(id, updateMenuDto);
   }
 
   /**

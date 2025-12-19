@@ -3,7 +3,6 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-  UnauthorizedException,
   ForbiddenException,
   Inject,
 } from '@nestjs/common';
@@ -29,7 +28,6 @@ import {
   getRedisKey,
 } from '@/common/constants/redis-key.constants';
 import { EnableStatus } from '@/common/constants/enums';
-import { MenuResponseDto } from '@/modules/menu/dto/menu-response.dto';
 
 /**
  * 用户服务

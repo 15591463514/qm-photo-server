@@ -12,7 +12,7 @@ import {
  */
 @ValidatorConstraint({ name: 'isDictCode', async: false })
 export class IsDictCodeConstraint implements ValidatorConstraintInterface {
-  validate(value: any, args: ValidationArguments) {
+  validate(value: any) {
     // 如果值为空（null、undefined、空字符串），且字段是可选的，则跳过验证
     // 这个逻辑由 @IsOptional() 装饰器处理，这里只验证非空值
     if (value === null || value === undefined || value === '') {
@@ -53,7 +53,7 @@ export class IsDictCodeConstraint implements ValidatorConstraintInterface {
  */
 @ValidatorConstraint({ name: 'isDictValue', async: false })
 export class IsDictValueConstraint implements ValidatorConstraintInterface {
-  validate(value: any, args: ValidationArguments) {
+  validate(value: any) {
     // 如果值为空（null、undefined、空字符串），且字段是可选的，则跳过验证
     // 这个逻辑由 @IsOptional() 装饰器处理，这里只验证非空值
     if (value === null || value === undefined || value === '') {
@@ -94,7 +94,7 @@ export class IsDictValueConstraint implements ValidatorConstraintInterface {
  */
 @ValidatorConstraint({ name: 'isDictName', async: false })
 export class IsDictNameConstraint implements ValidatorConstraintInterface {
-  validate(value: any, args: ValidationArguments) {
+  validate(value: any) {
     if (value === null || value === undefined || value === '') {
       return true;
     }
@@ -110,7 +110,8 @@ export class IsDictNameConstraint implements ValidatorConstraintInterface {
 
     // 不允许特殊字符和emoji（允许中文、字母、数字、空格、常用标点）
     // 使用 Unicode 范围来检测 emoji 和特殊字符
-    const noSpecialCharsOrEmojiRegex = /^[\u4e00-\u9fa5a-zA-Z0-9\s，。！？、；：""''（）【】《》.,!?;:()\[\]<>-]+$/;
+    const noSpecialCharsOrEmojiRegex =
+      /^[\u4e00-\u9fa5a-zA-Z0-9\s，。！？、；：""''（）【】《》.,!?;:()\[\]<>-]+$/;
     if (!noSpecialCharsOrEmojiRegex.test(value)) {
       return false;
     }
@@ -140,7 +141,7 @@ export class IsDictNameConstraint implements ValidatorConstraintInterface {
  * ```
  */
 export function IsDictCode(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -167,7 +168,7 @@ export function IsDictCode(validationOptions?: ValidationOptions) {
  * ```
  */
 export function IsDictValue(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -186,7 +187,7 @@ export function IsDictValue(validationOptions?: ValidationOptions) {
  * @returns 装饰器函数
  */
 export function IsDictName(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

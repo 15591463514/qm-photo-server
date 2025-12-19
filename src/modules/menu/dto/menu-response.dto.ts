@@ -50,7 +50,10 @@ export class MenuResponseDto {
   @Expose()
   path: string;
 
-  @ApiPropertyOptional({ description: '组件路径', example: '/system/user/index' })
+  @ApiPropertyOptional({
+    description: '组件路径',
+    example: '/system/user/index',
+  })
   @Expose()
   component?: string;
 
@@ -70,7 +73,10 @@ export class MenuResponseDto {
   @Expose()
   isHideTab: boolean;
 
-  @ApiPropertyOptional({ description: '外部链接', example: 'https://www.example.com' })
+  @ApiPropertyOptional({
+    description: '外部链接',
+    example: 'https://www.example.com',
+  })
   @Expose()
   link?: string;
 
@@ -110,7 +116,10 @@ export class MenuResponseDto {
   @Expose()
   createTime: Date;
 
-  @ApiPropertyOptional({ description: '更新时间', example: '2024-01-01T00:00:00.000Z' })
+  @ApiPropertyOptional({
+    description: '更新时间',
+    example: '2024-01-01T00:00:00.000Z',
+  })
   @Expose()
   updateTime?: Date;
 
@@ -130,4 +139,3 @@ export class MenuResponseDto {
   @Type(() => MenuButtonResponseDto)
   buttons?: MenuButtonResponseDto[];
 }
-

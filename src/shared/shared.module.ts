@@ -1,10 +1,6 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import {
-  CacheModule as CacheManagerModule,
-  Cache,
-  CACHE_MANAGER,
-} from '@nestjs/cache-manager';
+import { CacheModule as CacheManagerModule } from '@nestjs/cache-manager';
 import { PrismaModule } from 'nestjs-prisma';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core';
@@ -21,9 +17,6 @@ import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { winstonConfig } from '@/common/logger/winston.config';
 import { WinstonModule } from 'nest-winston';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { CustomThrottlerGuard } from '@/common/guards/custom-throttler.guard';
-import { CacheThrottlerStorage } from '@/common/storage/throttle';
 
 /**
  * 共享模块 - 包含全局配置和公共服务

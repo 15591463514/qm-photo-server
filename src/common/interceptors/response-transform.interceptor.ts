@@ -18,9 +18,10 @@ export interface Response<T> {
  * 响应转换拦截器
  */
 @Injectable()
-export class ResponseTransformInterceptor<T>
-  implements NestInterceptor<T, Response<T>>
-{
+export class ResponseTransformInterceptor<T> implements NestInterceptor<
+  T,
+  Response<T>
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,

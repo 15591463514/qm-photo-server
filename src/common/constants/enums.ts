@@ -29,4 +29,3 @@ export const ENABLE_STATUS_CONFIG = {
     value: EnableStatus.DISABLED,
   },
 } as const;
-

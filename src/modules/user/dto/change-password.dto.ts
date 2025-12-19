@@ -33,4 +33,3 @@ export class ChangePasswordDto {
   @MinLength(8, { message: '确认密码长度至少8位' })
   confirmPassword: string;
 }
-

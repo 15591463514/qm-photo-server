@@ -105,13 +105,9 @@ export class MenuService {
   /**
    * 创建菜单
    * @param createMenuDto 创建菜单 DTO
-   * @param userId 创建人ID
    * @returns 创建的菜单信息
    */
-  async create(
-    createMenuDto: CreateMenuDto,
-    userId?: number,
-  ): Promise<MenuResponseDto> {
+  async create(createMenuDto: CreateMenuDto): Promise<MenuResponseDto> {
     const parentId = createMenuDto.parentId ?? 0;
 
     // 如果指定了父菜单，检查父菜单是否存在
@@ -182,13 +178,11 @@ export class MenuService {
    * 更新菜单
    * @param id 菜单ID
    * @param updateMenuDto 更新菜单 DTO
-   * @param userId 更新人ID
    * @returns 更新后的菜单信息
    */
   async update(
     id: number,
     updateMenuDto: UpdateMenuDto,
-    userId?: number,
   ): Promise<MenuResponseDto> {
     // 检查菜单是否存在
     const existingMenu = await this.prisma.menu.findUnique({

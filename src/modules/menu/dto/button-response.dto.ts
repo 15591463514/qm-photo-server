@@ -19,4 +19,3 @@ export class ButtonResponseDto {
   @ApiProperty({ description: '排序', example: 0 })
   sortOrder: number;
 }
-
