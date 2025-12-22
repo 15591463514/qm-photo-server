@@ -223,6 +223,6 @@ export class TestService {
    * 测试demo
    */
   async testDemo() {
-    return { message: 'test demo' };
+    return { message: 'test demo success' };
   }
 }
