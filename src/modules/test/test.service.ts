@@ -218,4 +218,11 @@ export class TestService {
     await this.cacheManager.set('token', token, 60 * 1000);
     return { token: token };
   }
+
+  /**
+   * 测试demo
+   */
+  async testDemo() {
+    return { message: 'test demo' };
+  }
 }
