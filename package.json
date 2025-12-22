@@ -33,7 +33,17 @@
     "prisma:migrate:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
     "prisma:format": "prisma format",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:prod": "bash scripts/deploy.sh",
+    "deploy:build": "docker-compose -f docker-compose.prod.yml build app",
+    "deploy:up": "docker-compose -f docker-compose.prod.yml up -d",
+    "deploy:down": "docker-compose -f docker-compose.prod.yml down",
+    "deploy:logs": "docker-compose -f docker-compose.prod.yml logs -f",
+    "deploy:migrate": "docker-compose -f docker-compose.prod.yml run --rm app sh -c \"pnpm prisma generate && pnpm prisma migrate deploy\"",
+    "deploy:restart": "docker-compose -f docker-compose.prod.yml restart app",
+    "docker:build:push": "bash scripts/build-and-push.sh",
+    "docker:deploy:registry": "bash scripts/deploy-from-registry.sh"
   },
   "dependencies": {
     "@keyv/redis": "^5.1.4",

@@ -83,9 +83,17 @@ services:
 
   # 应用服务（使用 PM2）
   app:
+    # 指定平台为 linux/amd64，确保在 x86_64 服务器上正常运行
+    platform: linux/amd64
+    # 使用远程镜像（从阿里云容器镜像服务拉取）
+    # 如果设置了 DOCKER_IMAGE 环境变量，使用该镜像；否则使用 build 构建
+    image: ${DOCKER_IMAGE:-crpi-eg9062f6byi3012b.cn-chengdu.personal.cr.aliyuncs.com/dawn_dockers/qm-photo-server:${DOCKER_IMAGE_TAG:-latest}}
+    # 如果镜像不存在，使用 build 构建（备用方案）
     build:
       context: .
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
     container_name: qm-photo-app-prod
     restart: unless-stopped
     ports:
