@@ -6,15 +6,8 @@ on:
       - master
       - feat/deploy-prod
     paths:
-      - 'qm-photo-server/**'
-      - 'qm-photo-server/.github/workflows/**'
-    paths-ignore:
-      - 'qm-photo-server/**/*.md'
-      - 'qm-photo-server/**/README.md'
-      - 'qm-photo-server/docs/**'
-      - 'qm-photo-server/node_modules/**'
-      - 'qm-photo-server/dist/**'
-      - 'qm-photo-server/logs/**'
+      - '**'
+      - '!.github/workflows/**'
   workflow_dispatch:
     inputs:
       tag:
@@ -63,8 +56,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./qm-photo-server
-          file: ./qm-photo-server/Dockerfile
+          context: ./
+          file: ./Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
