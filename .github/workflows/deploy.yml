@@ -52,6 +52,40 @@ jobs:
           echo "tag=${TAG:-latest}" >> $GITHUB_OUTPUT
           echo "Image tag: ${TAG:-latest}"
 
+      # 优化1: 尝试拉取之前的镜像作为 Docker 层缓存源
+      - name: Pull previous image for cache
+        id: pull-cache
+        continue-on-error: true
+        run: |
+          echo "🔄 尝试拉取之前的镜像作为缓存源..."
+          docker pull ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest || echo "未找到缓存镜像，将从头构建"
+          echo "cache_available=$([ $? -eq 0 ] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+      # 优化2: 缓存 node_modules 依赖（基于 pnpm-lock.yaml）
+      - name: Cache node modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            **/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      # 优化3: 缓存 Prisma 生成的客户端
+      - name: Cache Prisma client
+        id: cache-prisma
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.prisma
+            node_modules/@prisma
+            prisma/generated
+          key: ${{ runner.os }}-prisma-${{ hashFiles('**/prisma/schema.prisma') }}
+          restore-keys: |
+            ${{ runner.os }}-prisma-
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -62,7 +96,10 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
+          # 多重缓存策略：优先使用 registry 镜像缓存，其次使用 GHA 缓存
+          cache-from: |
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+            type=gha
           cache-to: type=gha,mode=max
 
       - name: Output image info
@@ -72,3 +109,6 @@ jobs:
           echo ""
           echo "在服务器上拉取镜像："
           echo "docker pull ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}"
+          echo ""
+          echo "或者使用 latest 标签："
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest"
