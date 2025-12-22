@@ -24,7 +24,7 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # 添加超时设置
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -52,37 +52,18 @@ jobs:
           echo "tag=${TAG:-latest}" >> $GITHUB_OUTPUT
           echo "Image tag: ${TAG:-latest}"
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
-        id: build
         with:
           context: ./
           file: ./Dockerfile
           platforms: linux/amd64
-          push: false # 先不推送，只构建
-          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-          outputs: type=docker,dest=/tmp/image.tar
-
-      - name: Load and push image (commit tag)
-        run: |
-          echo "📦 加载镜像..."
-          docker load -i /tmp/image.tar
-          echo "🚀 推送镜像标签: ${{ steps.image-tag.outputs.tag }}"
-          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
-          echo "✅ 已推送: ${{ steps.image-tag.outputs.tag }}"
-
-      - name: Tag and push latest
-        if: steps.image-tag.outputs.latest == 'true'
-        run: |
-          echo "🏷️  标记 latest 标签..."
-          docker tag ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }} ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
-          echo "🚀 推送 latest 标签..."
-          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
-          echo "✅ 已推送 latest 标签"
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Output image info
         run: |
