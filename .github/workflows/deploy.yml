@@ -129,13 +129,14 @@ jobs:
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
           server_port: ${{ secrets.SMTP_PORT || 465 }}
+          secure: true
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: |
             ${{ job.status == 'success' && '✅' || '❌' }} Docker 镜像构建 ${{ job.status == 'success' && '成功' || '失败' }} - ${{ github.repository }}
           to: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}
-          body: |
+          html_body: |
             <h2>${{ job.status == 'success' && '✅ 构建成功' || '❌ 构建失败' }}</h2>
 
             <h3>基本信息</h3>
@@ -161,4 +162,3 @@ jobs:
 
             <hr>
             <p style="color: #999; font-size: 12px;">此邮件由 GitHub Actions 自动发送</p>
-          content_type: text/html

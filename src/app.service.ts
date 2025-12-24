@@ -7,6 +7,6 @@ export class AppService {
 
   getHello(): string {
     const nodeEnv = this.configService.get<string>('app.nodeEnv');
-    return `Hello World! 当前环境: ${nodeEnv}, 测试字符串: test`;
+    return `Hello World! 当前环境: ${nodeEnv}, 测试字符串: test prod`;
   }
 }
