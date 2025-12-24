@@ -116,6 +116,7 @@ const server = http.createServer((req, res) => {
 
       const token = authHeader.substring(7);
       if (token !== WEBHOOK_TOKEN) {
+        log(`token：${token} 和 WEBHOOK_TOKEN：${WEBHOOK_TOKEN} 不一致`);
         log(`无效的 Token: ${token.substring(0, 10)}...`, 'warn');
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Unauthorized: Invalid Token' }));
