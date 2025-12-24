@@ -98,6 +98,7 @@ services:
     restart: unless-stopped
     ports:
       - '${PORT:-3008}:3008'
+      - '${WEBHOOK_PORT:-3009}:3009'
     environment:
       - NODE_ENV=production
       - PORT=3008
