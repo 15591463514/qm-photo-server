@@ -44,8 +44,6 @@ module.exports = {
       max_memory_restart: '200M',
       env: {
         NODE_ENV: 'production',
-        WEBHOOK_PORT: process.env.WEBHOOK_PORT || '3009',
-        WEBHOOK_TOKEN: process.env.WEBHOOK_TOKEN || 'your-secret-token',
         WEBHOOK_LOG_FILE: '/app/logs/webhook-deploy.log',
       },
       error_file: './logs/webhook-error.log',
