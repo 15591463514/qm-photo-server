@@ -102,6 +102,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3008
+      - WEBHOOK_PORT=3009
+      - WEBHOOK_TOKEN=${WEBHOOK_TOKEN:-your-secret-token}
+      - WEBHOOK_LOG_FILE=/app/logs/webhook-deploy.log
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USERNAME=${DB_USERNAME}

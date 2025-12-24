@@ -84,6 +84,7 @@ RUN mkdir -p logs
 
 # 暴露端口
 EXPOSE 3008
+EXPOSE 3009
 
 # 设置环境变量
 ENV NODE_ENV=production
