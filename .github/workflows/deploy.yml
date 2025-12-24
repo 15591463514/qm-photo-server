@@ -112,3 +112,35 @@ jobs:
           echo ""
           echo "或者使用 latest 标签："
           echo "docker pull ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:latest"
+
+      # 通知服务器部署（仅在构建成功时执行）
+      - name: Notify server to deploy
+        if: success()
+        continue-on-error: true
+        run: |
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_WEBHOOK_TOKEN }}" ]; then
+            echo "🚀 通知服务器开始部署..."
+            curl -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}" \
+              -d "{
+                \"tag\": \"${{ steps.image-tag.outputs.tag }}\",
+                \"image\": \"${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}\",
+                \"status\": \"success\",
+                \"commit\": \"${{ github.sha }}\",
+                \"branch\": \"${{ github.ref_name }}\",
+                \"author\": \"${{ github.actor }}\",
+                \"message\": \"${{ github.event.head_commit.message }}\"
+              }" \
+              --max-time 10 \
+              --retry 2 \
+              --retry-delay 1
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ 服务器通知成功"
+            else
+              echo "⚠️ 服务器通知失败，但不影响构建流程"
+            fi
+          else
+            echo "ℹ️ 未配置 Webhook URL 或 Token，跳过服务器通知"
+          fi
