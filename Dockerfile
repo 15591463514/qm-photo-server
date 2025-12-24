@@ -73,6 +73,12 @@ COPY --from=builder /app/dist ./dist
 # 复制 PM2 配置文件
 COPY ecosystem.config.js ./
 
+# 复制 scripts 目录（用于 webhook 服务器和部署脚本）
+COPY scripts ./scripts
+
+# 设置 scripts 目录下的文件执行权限
+RUN chmod +x scripts/*.sh scripts/*.js 2>/dev/null || true
+
 # 创建日志目录
 RUN mkdir -p logs
 
