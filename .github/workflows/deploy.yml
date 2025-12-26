@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - feat/deploy-prod
     paths:
       - '**'
       - '!.github/workflows/**'
@@ -86,7 +85,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-prisma-
 
+      - name: 记录构建开始时间
+        id: build-start
+        run: |
+          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "⏱️ 开始构建 Docker 镜像..."
+
       - name: 构建并推送 Docker 镜像
+        id: build-image
         uses: docker/build-push-action@v5
         with:
           context: ./
@@ -102,9 +108,20 @@ jobs:
             type=gha
           cache-to: type=gha,mode=max
 
-      - name: 输出镜像信息
+      - name: 计算构建耗时并输出镜像信息
+        id: build-time
         run: |
+          end_time=$(date +%s)
+          start_time=${{ steps.build-start.outputs.start_time }}
+          duration=$((end_time - start_time))
+          minutes=$((duration / 60))
+          seconds=$((duration % 60))
+
+          echo "build_duration=${duration}" >> $GITHUB_OUTPUT
+          echo "build_duration_formatted=${minutes}分${seconds}秒" >> $GITHUB_OUTPUT
+
           echo "✅ Docker 镜像构建和推送完成！"
+          echo "⏱️ 构建耗时: ${minutes}分${seconds}秒 (${duration}秒)"
           echo "镜像地址: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}"
 
       # 更新服务器镜像并重启服务（仅在构建成功时执行）
@@ -122,6 +139,27 @@ jobs:
             echo '=====镜像更新完成====='
             echo '=====服务重启完成====='
 
+      # 准备邮件主题
+      - name: 准备邮件主题
+        if: always()
+        id: email-subject
+        run: |
+          repo_name=$(echo "${{ github.repository }}" | awk -F'/' '{print $NF}')
+          status_icon="${{ job.status == 'success' && '✅' || '❌' }}"
+          status_text="${{ job.status == 'success' && '成功' || '失败' }}"
+          branch="${{ github.ref_name }}"
+
+          # 获取构建耗时，如果不存在则显示"未知"
+          if [ -n "${{ steps.build-time.outputs.build_duration_formatted }}" ]; then
+            build_time="${{ steps.build-time.outputs.build_duration_formatted }}"
+          else
+            build_time="未知"
+          fi
+
+          subject="${status_icon} Docker 镜像构建 ${status_text} - ${repo_name} [${branch}] (${build_time})"
+          echo "subject=${subject}" >> $GITHUB_OUTPUT
+          echo "邮件主题: ${subject}"
+
       # 发送邮件通知（构建完成或失败时都发送）
       - name: 发送邮件通知
         if: always()
@@ -132,8 +170,7 @@ jobs:
           secure: true
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: |
-            ${{ job.status == 'success' && '✅' || '❌' }} Docker 镜像构建 ${{ job.status == 'success' && '成功' || '失败' }} - ${{ github.repository }}
+          subject: ${{ steps.email-subject.outputs.subject }}
           to: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}
           html_body: |
@@ -143,8 +180,8 @@ jobs:
             <ul>
               <li><strong>仓库:</strong> ${{ github.repository }}</li>
               <li><strong>分支:</strong> ${{ github.ref_name }}</li>
-              <li><strong>提交:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a></li>
               <li><strong>提交信息:</strong> ${{ github.event.head_commit.message || github.event.commits[0].message || 'N/A' }}</li>
+              <li><strong>提交:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a></li>
               <li><strong>作者:</strong> ${{ github.actor }}</li>
               <li><strong>工作流:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">查看详情</a></li>
             </ul>
@@ -154,6 +191,7 @@ jobs:
               <li><strong>镜像标签:</strong> ${{ steps.image-tag.outputs.tag }}</li>
               <li><strong>镜像地址:</strong> ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}</li>
               <li><strong>构建状态:</strong> ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}</li>
+              ${{ steps.build-time.outputs.build_duration != '' && '<li><strong>构建耗时:</strong> ' || '' }}${{ steps.build-time.outputs.build_duration != '' && steps.build-time.outputs.build_duration_formatted || '' }}${{ steps.build-time.outputs.build_duration != '' && '</li>' || '' }}
             </ul>
 
             ${{ job.status == 'success' && steps.deploy.outcome == 'success' && '<h3>部署信息</h3><ul><li><strong>部署状态:</strong> ✅ 已成功部署到服务器</li></ul>' || '' }}
