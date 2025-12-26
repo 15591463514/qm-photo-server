@@ -35,6 +35,13 @@ export class UserInfoResponseDto {
   })
   avatar?: string | null;
 
+  @ApiPropertyOptional({
+    description: '性别',
+    example: 'male',
+    enum: ['male', 'female', 'unknown'],
+  })
+  userGender?: string | null;
+
   @ApiProperty({
     description: '角色列表',
     example: ['admin'],

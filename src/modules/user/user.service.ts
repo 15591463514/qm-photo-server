@@ -77,6 +77,7 @@ export class UserService {
       nickName: user.nickName,
       email: user.email,
       avatar: user.avatar,
+      userGender: user.userGender,
       roles,
       buttons: permissions.buttons,
     };

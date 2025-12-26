@@ -183,15 +183,15 @@ export class UpdateMenuDto {
   fixedTab?: boolean;
 
   @ApiPropertyOptional({
-    description: '激活路径（只能包含 /、字母、数字、下划线、横线）',
+    description: '激活路径（只能包含 /、字母、数字、下划线、横线，可为空）',
     example: '/system/user',
     maxLength: 200,
   })
   @IsString({ message: '激活路径必须是字符串' })
   @IsOptional()
   @MaxLength(200, { message: '激活路径长度不能超过200个字符' })
-  @Matches(/^[/a-zA-Z0-9_-]+$/, {
-    message: '激活路径只能包含 /、字母、数字、下划线和横线',
+  @Matches(/^$|^[/a-zA-Z0-9_-]+$/, {
+    message: '激活路径只能包含 /、字母、数字、下划线和横线，或为空字符串',
   })
   activePath?: string;
 
