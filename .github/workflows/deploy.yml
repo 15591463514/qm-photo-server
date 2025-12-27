@@ -200,3 +200,31 @@ jobs:
 
             <hr>
             <p style="color: #999; font-size: 12px;">此邮件由 GitHub Actions 自动发送</p>
+
+      # 发送企业微信通知（构建完成或失败时都发送）
+      - name: 发送企业微信通知
+        if: always()
+        run: |
+          repo_name=$(echo "${{ github.repository }}" | awk -F'/' '{print $NF}')
+          status_icon="${{ job.status == 'success' && '✅' || '❌' }}"
+          status_text="${{ job.status == 'success' && '成功' || '失败' }}"
+          branch="${{ github.ref_name }}"
+
+          # 构建消息内容数组
+          lines=("🚀 **Docker 镜像构建通知**")
+
+          if [ "${{ job.status }}" == "success" ] && [ "${{ steps.deploy.outcome }}" == "success" ]; then
+            lines+=("✅ **部署状态**: 已成功部署到服务器")
+          fi
+
+          lines+=("" "📦 **项目**: $repo_name" "🌿 **分支**: $branch" "👤 **作者**: ${{ github.actor }}" "$status_icon **构建状态**: $status_text" "🏷️ **镜像标签**: ${{ steps.image-tag.outputs.tag }}" "🔗 **工作流**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})")
+
+          # 用换行符连接所有行
+          IFS=$'\n'
+          content="${lines[*]}"
+
+          # 发送到企业微信
+          curl -X POST "${{ secrets.WECHAT_WEBHOOK_URL }}" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg content "$content" '{msgtype: "markdown", markdown: {content: $content}}')" \
+            || echo "⚠️ 企业微信通知发送失败"
