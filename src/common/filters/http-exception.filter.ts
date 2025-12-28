@@ -3,6 +3,7 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
+  HttpStatus,
   Inject,
 } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -18,6 +19,11 @@ import { ResOp } from '../class/api-response.class';
  * 2. 将异常转换为统一的响应格式 { code, message, data }
  * 3. 处理 ValidationPipe 的错误（数组格式的 message）
  * 4. 使用 Winston 记录错误日志
+ *
+ * 日志策略：
+ * - 只记录程序运行异常（500及以上状态码）
+ * - 不记录业务逻辑错误：401（未授权/token过期）、403（权限不足）、404（资源不存在）
+ * - 不记录静默404路径（浏览器插件、扫描工具等请求的无效路径）
  *
  * 注意：
  * - 此过滤器处理 HttpException 及其子类（BadRequestException, UnauthorizedException 等）
@@ -64,29 +70,45 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.message || '请求处理失败';
     }
 
-    // 使用 Winston 记录错误日志
-    const logData = {
-      context: 'HttpExceptionFilter',
-      path: request.url,
-      method: request.method,
-      statusCode: status,
-      message,
-      stack: exception.stack,
-      body: request.body,
-      query: request.query,
-      params: request.params,
-      ip: request.ip,
-      userAgent: request.get('user-agent'),
-      timestamp: new Date().toISOString(),
-    };
+    // 定义不需要记录日志的HTTP状态码（业务逻辑错误，非程序异常）
+    // 401: 未授权（token过期等）
+    // 403: 禁止访问（权限不足）
+    // 404: 资源不存在
+    const noLogStatusCodes = [
+      HttpStatus.UNAUTHORIZED,
+      HttpStatus.FORBIDDEN,
+      HttpStatus.NOT_FOUND,
+    ];
 
-    // 根据状态码选择日志级别
-    if (status >= 500) {
-      this.logger.error(`HTTP ${status} Error: ${message}`, logData);
-    } else if (status >= 400) {
-      this.logger.warn(`HTTP ${status} Error: ${message}`, logData);
-    } else {
-      this.logger.info(`HTTP ${status} Error: ${message}`, logData);
+    // 判断是否需要记录日志
+    // 只记录程序运行异常（500及以上）和其他非业务逻辑错误（如400参数错误等）
+    // 不记录业务逻辑错误（401、403、404）
+    const shouldLog = !noLogStatusCodes.includes(status);
+
+    if (shouldLog) {
+      const logData = {
+        context: 'HttpExceptionFilter',
+        path: request.url,
+        method: request.method,
+        statusCode: status,
+        message,
+        stack: exception.stack,
+        body: request.body,
+        query: request.query,
+        params: request.params,
+        ip: request.ip,
+        userAgent: request.get('user-agent'),
+        timestamp: new Date().toISOString(),
+      };
+
+      // 根据状态码选择日志级别
+      if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        // 程序运行异常（500及以上），记录为error
+        this.logger.error(`HTTP ${status} Error: ${message}`, logData);
+      } else {
+        // 其他错误（如400参数错误等），记录为warn
+        this.logger.warn(`HTTP ${status} Error: ${message}`, logData);
+      }
     }
 
     // 转换为统一格式并返回

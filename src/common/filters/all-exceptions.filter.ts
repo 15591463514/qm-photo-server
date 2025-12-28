@@ -20,6 +20,11 @@ import { ResOp } from '../class/api-response.class';
  * 3. 使用 Winston 记录错误日志
  * 4. 防止敏感信息泄露
  *
+ * 日志策略：
+ * - 只记录程序运行异常（500及以上状态码）
+ * - 不记录业务逻辑错误：401（未授权/token过期）、403（权限不足）、404（资源不存在）
+ * - 不记录静默404路径（浏览器插件、扫描工具等请求的无效路径）
+ *
  * 注意：
  * - 此过滤器作为最后一道防线，捕获所有未被其他过滤器处理的异常
  * - 生产环境不返回详细的错误堆栈信息
@@ -74,26 +79,48 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
-    // 使用 Winston 记录详细错误日志
-    const logData = {
-      context: 'AllExceptionsFilter',
-      path: request.url,
-      method: request.method,
-      statusCode: status,
-      message,
-      stack: exception instanceof Error ? exception.stack : undefined,
-      exception: exception instanceof Error ? exception.name : typeof exception,
-      exceptionMessage:
-        exception instanceof Error ? exception.message : String(exception),
-      body: request.body,
-      query: request.query,
-      params: request.params,
-      ip: request.ip,
-      userAgent: request.get('user-agent'),
-      timestamp: new Date().toISOString(),
-    };
+    // 定义不需要记录日志的HTTP状态码（业务逻辑错误，非程序异常）
+    // 401: 未授权（token过期等）
+    // 403: 禁止访问（权限不足）
+    // 404: 资源不存在
+    const noLogStatusCodes = [
+      HttpStatus.UNAUTHORIZED,
+      HttpStatus.FORBIDDEN,
+      HttpStatus.NOT_FOUND,
+    ];
 
-    this.logger.error(`Unhandled Exception: ${message}`, logData);
+    // 检查是否为需要静默处理的404路径
+    const isSilent404 = status === HttpStatus.NOT_FOUND;
+
+    // 判断是否需要记录日志
+    // 只记录程序运行异常（500及以上），排除业务逻辑错误和静默路径
+    const shouldLog =
+      status >= HttpStatus.INTERNAL_SERVER_ERROR &&
+      !noLogStatusCodes.includes(status) &&
+      !isSilent404;
+
+    if (shouldLog) {
+      // 程序运行异常，必须记录
+      const logData = {
+        context: 'AllExceptionsFilter',
+        path: request.url,
+        method: request.method,
+        statusCode: status,
+        message,
+        stack: exception instanceof Error ? exception.stack : undefined,
+        exception:
+          exception instanceof Error ? exception.name : typeof exception,
+        exceptionMessage:
+          exception instanceof Error ? exception.message : String(exception),
+        body: request.body,
+        query: request.query,
+        params: request.params,
+        ip: request.ip,
+        userAgent: request.get('user-agent'),
+        timestamp: new Date().toISOString(),
+      };
+      this.logger.error(`Unhandled Exception: ${message}`, logData);
+    }
 
     // 转换为统一格式并返回
     const errorResponse = ResOp.error(status, message);
