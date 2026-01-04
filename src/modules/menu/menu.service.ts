@@ -108,10 +108,14 @@ export class MenuService {
    * @returns 创建的菜单信息
    */
   async create(createMenuDto: CreateMenuDto): Promise<MenuResponseDto> {
-    const parentId = createMenuDto.parentId ?? 0;
+    // 将 0 或 undefined 转换为 null，表示顶层菜单
+    const parentId =
+      createMenuDto.parentId === 0 || createMenuDto.parentId === undefined
+        ? null
+        : createMenuDto.parentId;
 
     // 如果指定了父菜单，检查父菜单是否存在
-    if (parentId !== 0) {
+    if (parentId !== null) {
       const parentMenu = await this.prisma.menu.findUnique({
         where: { id: parentId },
       });
@@ -124,7 +128,7 @@ export class MenuService {
     // 检查同一父菜单下路径是否已存在
     const existingMenu = await this.prisma.menu.findFirst({
       where: {
-        parentId,
+        parentId: parentId ?? null, // 确保 null 值正确传递
         path: createMenuDto.path,
       },
     });
@@ -195,8 +199,11 @@ export class MenuService {
 
     // 如果更新了父菜单ID，检查新父菜单是否存在
     if (updateMenuDto.parentId !== undefined) {
-      const newParentId = updateMenuDto.parentId;
-      if (newParentId !== 0) {
+      // 将 0 转换为 null，表示顶层菜单
+      const newParentId =
+        updateMenuDto.parentId === 0 ? null : updateMenuDto.parentId;
+
+      if (newParentId !== null) {
         const parentMenu = await this.prisma.menu.findUnique({
           where: { id: newParentId },
         });
@@ -224,7 +231,7 @@ export class MenuService {
             select: { parentId: true },
           });
 
-          if (!menu || menu.parentId === 0) {
+          if (!menu || menu.parentId === null) {
             return false;
           }
 
@@ -239,6 +246,9 @@ export class MenuService {
           throw new ConflictException('不能形成循环引用');
         }
       }
+
+      // 更新 parentId（包括设置为 null 的情况）
+      updateMenuDto.parentId = newParentId as any;
     }
 
     // 如果更新了路径，检查同一父菜单下新路径是否已存在

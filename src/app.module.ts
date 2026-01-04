@@ -8,6 +8,7 @@ import { UserModule } from './modules/user/user.module';
 import { RoleModule } from './modules/role/role.module';
 import { DictModule } from './modules/dict/dict.module';
 import { MenuModule } from './modules/menu/menu.module';
+import { NoticeModule } from './modules/notice/notice.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MenuModule } from './modules/menu/menu.module';
     RoleModule,
     DictModule,
     MenuModule,
+    NoticeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

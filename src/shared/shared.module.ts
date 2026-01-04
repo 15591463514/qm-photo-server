@@ -9,6 +9,7 @@ import { createKeyv } from '@keyv/redis';
 import appConfig from '../config/app.config';
 import databaseConfig from '../config/database.config';
 import redisConfig, { RedisConfig } from '../config/redis.config';
+import emailConfig from '../config/email.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -29,7 +30,7 @@ import { WinstonModule } from 'nest-winston';
      */
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig],
+      load: [appConfig, databaseConfig, redisConfig, emailConfig],
       envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
       expandVariables: true,
     }),

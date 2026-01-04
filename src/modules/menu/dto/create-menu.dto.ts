@@ -33,7 +33,7 @@ export class CreateMenuButtonDto {
   @IsString({ message: '权限标识必须是字符串' })
   @IsNotEmpty({ message: '权限标识不能为空' })
   @MaxLength(30, { message: '权限标识不能超过30个字符' })
-  @Matches(/^[a-z0-9_:-]+$/, {
+  @Matches(/^[a-zA-Z0-9_:-]+$/, {
     message: '权限标识只能包含字母、短横线、下划线、数字和冒号',
   })
   authMark: string;
@@ -87,15 +87,15 @@ export class CreateMenuDto {
   path: string;
 
   @ApiPropertyOptional({
-    description: '组件路径（只能包含 /、字母、数字、下划线、横线）',
+    description: '组件路径（只能包含 /、字母、数字、下划线、横线，可为空）',
     example: '/system/user/index',
     maxLength: 500,
   })
   @IsString({ message: '组件路径必须是字符串' })
   @IsOptional()
   @MaxLength(500, { message: '组件路径长度不能超过500个字符' })
-  @Matches(/^[/a-zA-Z0-9_-]+$/, {
-    message: '组件路径只能包含 /、字母、数字、下划线和横线',
+  @Matches(/^$|^[/a-zA-Z0-9_-]+$/, {
+    message: '组件路径只能包含 /、字母、数字、下划线和横线，或为空字符串',
   })
   component?: string;
 

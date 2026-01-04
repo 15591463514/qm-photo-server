@@ -88,11 +88,11 @@ export function buildMenuTree(menus: MenuWithButtons[]): MenuResponseDto[] {
       continue; // 跳过无效节点
     }
 
-    /** 父节点ID */
-    const parentId = menu.parentId || 0;
+    /** 父节点ID（兼容 null 和 0，都表示顶层菜单） */
+    const parentId = menu.parentId ?? 0;
 
-    // 如果父节点ID为0，则将当前节点添加到根节点数组中
-    if (parentId === 0) {
+    // 如果父节点ID为 null 或 0，则将当前节点添加到根节点数组中
+    if (parentId === null || parentId === 0) {
       rootMenus.push(menuDto);
       continue;
     }
