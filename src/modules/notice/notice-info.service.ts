@@ -18,8 +18,19 @@ export class NoticeInfoService {
   /**
    * 分页查询通知信息
    */
-  async findPaginated(query: QueryInfoDto): Promise<PaginatedDto<InfoResponseDto>> {
-    const { current = 1, size = 10, skip, take, msgSource, msgType, start, end } = query;
+  async findPaginated(
+    query: QueryInfoDto,
+  ): Promise<PaginatedDto<InfoResponseDto>> {
+    const {
+      current = 1,
+      size = 10,
+      skip,
+      take,
+      msgSource,
+      msgType,
+      start,
+      end,
+    } = query;
 
     // 构建查询条件
     const where: Prisma.NotificationInfoWhereInput = {};
@@ -117,4 +128,3 @@ export class NoticeInfoService {
     });
   }
 }
-

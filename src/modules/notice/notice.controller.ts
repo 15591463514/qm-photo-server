@@ -294,52 +294,11 @@ export class NoticeController {
     },
   })
   async triggerEvent(@Body() triggerEventDto: TriggerEventDto) {
-    const result = await this.noticeService.triggerEvent(
+    return this.noticeService.triggerEvent(
       triggerEventDto.msgSource,
       triggerEventDto.msgType,
       triggerEventDto.eventData,
       triggerEventDto.noticeAddress,
     );
-
-    // 如果没有匹配的规则（total === 0 且 hasError === false）
-    if (result.total === 0 && !result.hasError) {
-      return {
-        message: '未找到匹配的规则',
-        success: 0,
-        total: 0,
-      };
-    }
-
-    // 如果全部失败或所有规则被跳过，返回失败信息（不抛出异常，返回 200）
-    if (result.hasError) {
-      if (result.total === 0) {
-        return {
-          message: '所有匹配规则的通知地址为空，无法发送通知',
-          success: 0,
-          total: 0,
-        };
-      }
-      return {
-        message: `通知发送失败: 成功 ${result.success}/${result.total}`,
-        success: result.success,
-        total: result.total,
-      };
-    }
-
-    // 如果部分失败，返回警告信息
-    if (result.success < result.total) {
-      return {
-        message: `部分通知发送失败: 成功 ${result.success}/${result.total}`,
-        success: result.success,
-        total: result.total,
-      };
-    }
-
-    // 全部成功
-    return {
-      message: '通知发送成功: 成功 ' + result.success + '/' + result.total,
-      success: result.success,
-      total: result.total,
-    };
   }
 }

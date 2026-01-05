@@ -49,4 +49,3 @@ export class InfoResponseDto {
   @Transform(({ value }) => utcToLocal(value))
   updateTime: string;
 }
-

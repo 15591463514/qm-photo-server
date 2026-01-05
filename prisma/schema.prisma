@@ -240,9 +240,11 @@ model NotificationRule {
   msgSource         String   @map("msg_source") @db.VarChar(50)
   msgType           String   @map("msg_type") @db.VarChar(50)
   noticeMode        Int      @default(3) @map("notice_mode") // 3: 邮箱
-  noticeAddress     String   @map("notice_address") @db.VarChar(500)
+  noticeAddress     String?  @map("notice_address") @db.VarChar(500)
   noticeAddressName String?  @map("notice_address_name") @db.VarChar(100)
   handlerScript     String?  @map("handler_script") @db.Text
+  eventDataExample  String?  @map("event_data_example") @db.Text // 入参示例（JSON格式）
+  enableRecord      Boolean  @default(true) @map("enable_record") // 是否开启记录
   createUsername    String?  @map("create_username") @db.VarChar(50)
   updateUsername    String?  @map("update_username") @db.VarChar(50)
   noticeStatus      Int      @default(1) @map("notice_status") // 1: 启用, 0: 禁用

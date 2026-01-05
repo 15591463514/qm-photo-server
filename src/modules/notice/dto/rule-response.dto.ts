@@ -22,7 +22,10 @@ export class RuleResponseDto {
   @ApiProperty({ description: '通知方式', example: 3 })
   noticeMode: number;
 
-  @ApiProperty({ description: '通知地址', example: 'dev@example.com,test@example.com' })
+  @ApiProperty({
+    description: '通知地址',
+    example: 'dev@example.com,test@example.com',
+  })
   noticeAddress: string;
 
   @ApiPropertyOptional({ description: '通知地址名称' })
@@ -30,6 +33,16 @@ export class RuleResponseDto {
 
   @ApiPropertyOptional({ description: '处理脚本' })
   handlerScript?: string;
+
+  @ApiPropertyOptional({ description: '入参示例（JSON格式）' })
+  eventDataExample?: string;
+
+  @ApiPropertyOptional({
+    description: '是否开启记录',
+    example: true,
+    default: true,
+  })
+  enableRecord?: boolean;
 
   @ApiPropertyOptional({ description: '创建人' })
   createUsername?: string;
@@ -54,4 +67,3 @@ export class RuleResponseDto {
   @Transform(({ value }) => utcToLocal(value))
   updateTime: string;
 }
-

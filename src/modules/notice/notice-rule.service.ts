@@ -32,9 +32,11 @@ export class NoticeRuleService {
       msgSource: createRuleDto.msgSource,
       msgType: createRuleDto.msgType,
       noticeMode: createRuleDto.noticeMode,
-      noticeAddress: createRuleDto.noticeAddress,
+      noticeAddress: createRuleDto.noticeAddress?.trim() || null,
       noticeAddressName: createRuleDto.noticeAddressName,
       handlerScript: createRuleDto.handlerScript,
+      eventDataExample: createRuleDto.eventDataExample?.trim() || null,
+      enableRecord: createRuleDto.enableRecord ?? true,
       noticeStatus: createRuleDto.noticeStatus ?? 1,
       createUsername: currentUsername,
     };
@@ -49,7 +51,9 @@ export class NoticeRuleService {
   /**
    * 分页查询通知规则
    */
-  async findPaginated(query: QueryRuleDto): Promise<PaginatedDto<RuleResponseDto>> {
+  async findPaginated(
+    query: QueryRuleDto,
+  ): Promise<PaginatedDto<RuleResponseDto>> {
     const { current = 1, size = 10, skip, take, msgSource, msgType } = query;
 
     // 构建查询条件
@@ -121,6 +125,16 @@ export class NoticeRuleService {
 
     const data: Prisma.NotificationRuleUpdateInput = {
       ...updateRuleDto,
+      // 如果 noticeAddress 是空字符串，转换为 null
+      noticeAddress:
+        updateRuleDto.noticeAddress !== undefined
+          ? updateRuleDto.noticeAddress?.trim() || null
+          : undefined,
+      // 如果 eventDataExample 是空字符串，转换为 null
+      eventDataExample:
+        updateRuleDto.eventDataExample !== undefined
+          ? updateRuleDto.eventDataExample?.trim() || null
+          : undefined,
       updateUsername: currentUsername,
     };
 
@@ -174,4 +188,3 @@ export class NoticeRuleService {
     return plainToInstance(RuleResponseDto, updated);
   }
 }
-

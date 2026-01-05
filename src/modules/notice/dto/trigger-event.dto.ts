@@ -35,7 +35,8 @@ export class TriggerEventDto {
   eventData: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: '测试通知地址（可选，如果提供则使用此地址替代规则中的通知地址）',
+    description:
+      '测试通知地址（可选，如果提供则使用此地址替代规则中的通知地址）',
     example: 'test@example.com',
     maxLength: 500,
   })
@@ -43,4 +44,3 @@ export class TriggerEventDto {
   @IsOptional()
   noticeAddress?: string;
 }
-

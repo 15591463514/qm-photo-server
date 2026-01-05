@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsInt,
   IsIn,
+  IsBoolean,
   MaxLength,
 } from 'class-validator';
 
@@ -52,15 +53,15 @@ export class CreateRuleDto {
   @IsIn([3], { message: '通知方式只能是 3（邮箱）' })
   noticeMode: number;
 
-  @ApiProperty({
-    description: '通知地址（邮箱地址，多个用英文分号分隔）',
+  @ApiPropertyOptional({
+    description: '通知地址（邮箱地址，多个用英文分号分隔，可选，创建模板时可留空）',
     example: 'dev@example.com;test@example.com',
     maxLength: 500,
   })
   @IsString()
-  @IsNotEmpty({ message: '通知地址不能为空' })
+  @IsOptional()
   @MaxLength(500, { message: '通知地址不能超过500个字符' })
-  noticeAddress: string;
+  noticeAddress?: string;
 
   @ApiPropertyOptional({
     description: '通知地址名称（主要用于企微群，邮箱通知可为空）',
@@ -74,11 +75,29 @@ export class CreateRuleDto {
 
   @ApiPropertyOptional({
     description: '处理脚本（JavaScript代码）',
-    example: 'function formatContent(jsonObject) { return { subject: "通知", content: "<p>内容</p>" }; }',
+    example:
+      'function formatContent(jsonObject) { return { subject: "通知", content: "<p>内容</p>" }; }',
   })
   @IsString()
   @IsOptional()
   handlerScript?: string;
+
+  @ApiPropertyOptional({
+    description: '入参示例（JSON格式，用于测试时自动填充）',
+    example: '{\n  "code": "123456",\n  "expireMinutes": 5\n}',
+  })
+  @IsString()
+  @IsOptional()
+  eventDataExample?: string;
+
+  @ApiPropertyOptional({
+    description: '是否开启记录（true: 记录通知信息，false: 仅发送邮件不记录）',
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  enableRecord?: boolean;
 
   @ApiPropertyOptional({
     description: '规则状态',
@@ -91,4 +110,3 @@ export class CreateRuleDto {
   @IsOptional()
   noticeStatus?: number;
 }
-

@@ -38,4 +38,3 @@ export class QueryInfoDto extends PaginationDto {
   @IsOptional()
   end?: string;
 }
-

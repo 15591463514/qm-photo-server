@@ -15,7 +15,9 @@ export class LogResponseDto {
   infoId: number;
 
   @ApiPropertyOptional({ description: '规则ID' })
-  @Transform(({ value }) => (value != null && typeof value === 'bigint' ? Number(value) : value))
+  @Transform(({ value }) =>
+    value != null && typeof value === 'bigint' ? Number(value) : value,
+  )
   ruleId?: number;
 
   @ApiProperty({ description: '通知方式', example: 3 })
@@ -34,7 +36,10 @@ export class LogResponseDto {
   @Transform(({ value }) => (value ? utcToLocal(value) : value))
   noticeResultTime?: string;
 
-  @ApiPropertyOptional({ description: '说明（失败原因等）', example: '收件人地址无效或被拒绝' })
+  @ApiPropertyOptional({
+    description: '说明（失败原因等）',
+    example: '收件人地址无效或被拒绝',
+  })
   description?: string;
 
   @ApiProperty({
@@ -44,4 +49,3 @@ export class LogResponseDto {
   @Transform(({ value }) => utcToLocal(value))
   createdAt: string;
 }
-

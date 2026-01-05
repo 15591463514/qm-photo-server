@@ -22,4 +22,3 @@ export class QueryRuleDto extends PaginationDto {
   @IsOptional()
   msgType?: string;
 }
-
