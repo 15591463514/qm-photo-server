@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
-import { VERIFICATION_CODE_EXPIRE_MINUTES } from '@/constant/register';
+import { VERIFICATION_CODE_EXPIRE_MINUTES } from '@/constant/auth';
 
 /**
  * 验证码信息接口

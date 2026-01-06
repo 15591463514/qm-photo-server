@@ -31,7 +31,7 @@ import { parseExpiresIn } from '@/common/helpers/date.helper';
 import { VerificationCodeService } from './services/verification-code.service';
 import { NoticeService } from '@/modules/notice/services/notice.service';
 import { SYSTEM_RULE_MAP } from '@/constant/systemRules';
-import { VERIFICATION_CODE_EXPIRE_MINUTES } from '@/constant/register';
+import { VERIFICATION_CODE_EXPIRE_MINUTES } from '@/constant/auth';
 
 /**
  * 认证服务

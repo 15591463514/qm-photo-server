@@ -4,6 +4,7 @@ import { Inject } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import svgCaptcha from 'svg-captcha';
 import { randomUUID } from 'crypto';
+import { CAPTCHA_EXPIRE_MINUTES } from '@/constant/auth';
 
 /**
  * 验证码信息接口
@@ -20,7 +21,7 @@ interface CaptchaInfo {
 @Injectable()
 export class CaptchaService {
   private readonly logger = new Logger(CaptchaService.name);
-  private readonly CAPTCHA_EXPIRE_TIME = 5 * 60 * 1000; // 验证码有效期：5分钟（毫秒）
+  private readonly CAPTCHA_EXPIRE_TIME = CAPTCHA_EXPIRE_MINUTES * 60 * 1000; // 验证码有效期：5分钟（毫秒）
   private readonly KEY_PREFIX = 'captcha:img:'; // Redis 键前缀
 
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
@@ -130,4 +131,3 @@ export class CaptchaService {
     }
   }
 }
-
