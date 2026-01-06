@@ -28,6 +28,10 @@ import { RegisterResponseDto } from './dto/register-response.dto';
 import { EnableStatus } from '@/common/constants/enums';
 import { UserService } from '@/modules/user/user.service';
 import { parseExpiresIn } from '@/common/helpers/date.helper';
+import { VerificationCodeService } from './services/verification-code.service';
+import { NoticeService } from '@/modules/notice/services/notice.service';
+import { SYSTEM_RULE_MAP } from '@/constant/systemRules';
+import { VERIFICATION_CODE_EXPIRE_MINUTES } from '@/constant/register';
 
 /**
  * 认证服务
@@ -40,29 +44,49 @@ export class AuthService {
     private configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @Inject(forwardRef(() => UserService)) private userService: UserService,
+    private verificationCodeService: VerificationCodeService,
+    private noticeService: NoticeService,
   ) {}
 
   /**
    * 验证用户（Local Strategy 调用）
-   * @param userName 用户名
+   * @param account 账号或邮箱
    * @param password 密码
    * @returns 用户信息（排除密码）
    */
-  async validateUser(userName: string, password: string): Promise<any> {
-    // 使用 Prisma 查询用户
-    const user = await this.prisma.user.findUnique({
-      where: { userName },
-      include: {
-        userRoles: {
-          include: {
-            role: true,
+  async validateUser(account: string, password: string): Promise<any> {
+    // 判断是邮箱还是用户名（简单判断：包含 @ 符号则为邮箱）
+    const isEmail = account.includes('@');
+
+    let user;
+    if (isEmail) {
+      // 使用邮箱查询用户
+      user = await this.prisma.user.findFirst({
+        where: { email: account },
+        include: {
+          userRoles: {
+            include: {
+              role: true,
+            },
           },
         },
-      },
-    });
+      });
+    } else {
+      // 使用用户名查询用户
+      user = await this.prisma.user.findUnique({
+        where: { userName: account },
+        include: {
+          userRoles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+    }
 
     if (!user) {
-      throw new BadRequestException('用户名或密码错误');
+      throw new BadRequestException('账号或密码错误');
     }
 
     // 验证用户状态
@@ -73,7 +97,7 @@ export class AuthService {
     // 验证密码（BCrypt）
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new BadRequestException('用户名或密码错误');
+      throw new BadRequestException('账号或密码错误');
     }
 
     // 返回用户信息（排除密码）
@@ -348,11 +372,59 @@ export class AuthService {
   }
 
   /**
+   * 发送验证码
+   * @param email 邮箱地址
+   * @returns 发送结果
+   */
+  async sendVerificationCode(email: string): Promise<{ message: string }> {
+    // 检查邮箱是否已被注册
+    const existingEmail = await this.prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('该邮箱已被注册');
+    }
+
+    // 生成验证码
+    const code = await this.verificationCodeService.generateAndStoreCode(email);
+
+    // 触发通知规则 system_email_code，传入邮箱地址和验证码
+    await this.noticeService.triggerEvent(
+      SYSTEM_RULE_MAP.SYSTEM_EMAIL_CODE.msgSource,
+      SYSTEM_RULE_MAP.SYSTEM_EMAIL_CODE.msgType,
+      {
+        code,
+        expireMinutes: VERIFICATION_CODE_EXPIRE_MINUTES,
+      },
+      email, // 传入邮箱地址作为通知地址
+    );
+
+    return {
+      message: '验证码已发送到您的邮箱',
+    };
+  }
+
+  /**
    * 注册用户
    * @param registerDto 注册参数
    * @returns 注册结果
    */
   async register(registerDto: RegisterDto): Promise<RegisterResponseDto> {
+    // 验证验证码
+    if (registerDto.email && registerDto.verificationCode) {
+      const isValid = await this.verificationCodeService.verifyCode(
+        registerDto.email,
+        registerDto.verificationCode,
+      );
+
+      if (!isValid) {
+        throw new BadRequestException('验证码错误或已过期');
+      }
+    } else {
+      throw new BadRequestException('邮箱和验证码不能为空');
+    }
+
     // 检查用户名是否已存在
     const existingUser = await this.prisma.user.findUnique({
       where: { userName: registerDto.username },
@@ -360,6 +432,15 @@ export class AuthService {
 
     if (existingUser) {
       throw new ConflictException('用户名已存在');
+    }
+
+    // 检查邮箱是否已被使用
+    const existingEmail = await this.prisma.user.findFirst({
+      where: { email: registerDto.email },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('该邮箱已被注册');
     }
 
     // 加密密码
@@ -380,6 +461,7 @@ export class AuthService {
       data: {
         userName: registerDto.username,
         password: hashedPassword,
+        email: registerDto.email,
         status: EnableStatus.ENABLED, // 默认启用
         userGender: 'unknown', // 默认未知
         userRoles: {
@@ -388,13 +470,25 @@ export class AuthService {
           },
         },
       },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+      },
     });
 
-    // 返回注册结果（拦截器会自动包装为 { code, message, data } 格式）
+    // 注册成功后自动登录：生成 Token
+    const loginResult = await this.login(user);
+
+    // 返回注册结果和登录 Token（拦截器会自动包装为 { code, message, data } 格式）
     return {
       userId: Number(user.id), // 确保是 number 类型
       userName: user.userName,
       message: '注册成功',
+      token: loginResult.token,
+      refreshToken: loginResult.refreshToken,
     };
   }
 

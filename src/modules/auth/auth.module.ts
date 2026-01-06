@@ -7,6 +7,9 @@ import { AuthController } from './auth.controller';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UserModule } from '@/modules/user/user.module';
+import { NoticeModule } from '@/modules/notice/notice.module';
+import { VerificationCodeService } from './services/verification-code.service';
+import { CaptchaService } from './services/captcha.service';
 
 /**
  * 认证模块
@@ -36,9 +39,18 @@ import { UserModule } from '@/modules/user/user.module';
 
     // 用户模块（使用 forwardRef 避免循环依赖）
     forwardRef(() => UserModule),
+
+    // 通知模块（用于发送验证码邮件）
+    NoticeModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    VerificationCodeService,
+    CaptchaService,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

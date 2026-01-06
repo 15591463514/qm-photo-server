@@ -21,4 +21,16 @@ export class RegisterResponseDto {
     example: '注册成功',
   })
   message: string;
+
+  @ApiProperty({
+    description: '访问令牌（注册成功后自动登录）',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  token: string;
+
+  @ApiProperty({
+    description: '刷新令牌（注册成功后自动登录）',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  refreshToken: string;
 }

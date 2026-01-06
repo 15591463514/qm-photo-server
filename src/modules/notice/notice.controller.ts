@@ -39,6 +39,7 @@ import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 import { Public } from '@/common/decorators/public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('通知管理')
 @Controller('notice')
@@ -264,7 +265,8 @@ export class NoticeController {
    * 触发通知事件（公开接口，供业务系统调用）
    */
   @Post('trigger')
-  @Public() // 公开接口，不需要认证
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 20000 } }) // 3次/20秒
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '触发通知事件',

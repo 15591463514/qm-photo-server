@@ -3,8 +3,6 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
-  MaxLength,
-  Matches,
 } from 'class-validator';
 
 /**
@@ -12,19 +10,13 @@ import {
  */
 export class LoginDto {
   @ApiProperty({
-    description: '账号（3-20个字符，字母开头，只能包含字母、数字、下划线）',
-    example: 'admin',
-    minLength: 3,
-    maxLength: 20,
+    description: '账号或邮箱（支持用户名或邮箱地址登录）',
+    example: 'admin 或 user@example.com',
   })
-  @IsNotEmpty({ message: '账号不能为空' })
-  @IsString({ message: '账号必须是字符串' })
-  @MinLength(3, { message: '账号长度不能少于3位' })
-  @MaxLength(20, { message: '账号长度不能超过20位' })
-  @Matches(/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/, {
-    message: '账号必须以字母开头，只能包含字母、数字和下划线',
-  })
-  userName: string;
+  @IsNotEmpty({ message: '账号或邮箱不能为空' })
+  @IsString({ message: '账号或邮箱必须是字符串' })
+  @MinLength(3, { message: '账号或邮箱长度不能少于3位' })
+  account: string;
 
   @ApiProperty({
     description: '密码',
@@ -34,4 +26,20 @@ export class LoginDto {
   @IsString({ message: '密码必须是字符串' })
   @MinLength(6, { message: '密码长度不能少于6位' })
   password: string;
+
+  @ApiProperty({
+    description: '验证码ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsNotEmpty({ message: '验证码ID不能为空' })
+  @IsString({ message: '验证码ID必须是字符串' })
+  captchaId: string;
+
+  @ApiProperty({
+    description: '验证码文本',
+    example: '1234',
+  })
+  @IsNotEmpty({ message: '验证码不能为空' })
+  @IsString({ message: '验证码必须是字符串' })
+  captchaText: string;
 }
