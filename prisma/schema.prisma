@@ -305,3 +305,28 @@ model NotificationLog {
   @@index([noticeResult], name: "idx_notice_result")
   @@map("notification_log")
 }
+
+// ==================== 标签表（扁平化设计）====================
+model Tag {
+  id          Int       @id @default(autoincrement())
+  groupCode   String    @map("group_code") @db.VarChar(100) // 标签组代码（如：image_tags, product_tags）
+  groupName   String    @map("group_name") @db.VarChar(100) // 标签组名称（如：图片标签、产品标签）
+  groupStatus Int       @default(1) @map("group_status") // 标签组状态：1-启用，0-禁用
+  label       String    @db.VarChar(100) // 标签名称（显示用，如：风景、人物）
+  value       String    @db.VarChar(100) // 标签值（如：landscape, portrait）
+  sort        Int       @default(0) // 排序
+  status      Int       @default(1) // 标签状态：1-启用，0-禁用
+  description String?   @db.VarChar(500) // 描述（标签组描述，同一组下的标签共享）
+  createBy    Int?      @map("create_by") // 创建者ID
+  createTime  DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateBy    Int?      @map("update_by") // 更新者ID
+  updateTime  DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+
+  // 唯一约束：同一标签组下标签值必须唯一
+  @@unique([groupCode, value], name: "tags_group_code_value_key")
+  @@index([groupCode], name: "idx_group_code")
+  @@index([status], name: "idx_status")
+  @@index([groupStatus], name: "idx_group_status")
+  @@index([sort], name: "idx_sort")
+  @@map("tags")
+}

@@ -1,0 +1,12 @@
+# 迁移基线说明
+# 以下迁移文件在应用后被修改，导致校验和不匹配
+# 解决方案：使用 prisma db push 同步数据库，然后使用 migrate resolve 修复历史
+# 
+# 已修复的迁移：
+# - 20251210020000_add_dict_sort_unique_constraint
+# - 20251210160000_add_type_status_field
+# - 20250110120000_add_tag_table
+#
+# 如果遇到校验和不匹配问题，可以：
+# 1. 使用 prisma db push 同步数据库
+# 2. 使用 prisma migrate resolve --applied <migration_name> 修复历史

@@ -61,10 +61,13 @@ export class ResponseTransformInterceptor<T> implements NestInterceptor<
         const transformedData = transformBigInt(data);
 
         // 如果响应已经是统一格式，直接返回
+        // 检查是否为 ResOp 格式：必须同时包含 code、message 字段，且 code 为数字类型
         if (
           transformedData &&
           typeof transformedData === 'object' &&
-          'code' in transformedData
+          'code' in transformedData &&
+          'message' in transformedData &&
+          typeof transformedData.code === 'number'
         ) {
           return transformedData;
         }

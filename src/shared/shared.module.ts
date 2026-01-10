@@ -10,6 +10,7 @@ import appConfig from '../config/app.config';
 import databaseConfig from '../config/database.config';
 import redisConfig, { RedisConfig } from '../config/redis.config';
 import emailConfig from '../config/email.config';
+import ossConfig from '../config/oss.config';
 import { ResponseTransformInterceptor } from '@/common/interceptors/response-transform.interceptor';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -18,6 +19,7 @@ import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
 import { winstonConfig } from '@/common/logger/winston.config';
 import { WinstonModule } from 'nest-winston';
+import { OssService } from './services/oss.service';
 
 /**
  * 共享模块 - 包含全局配置和公共服务
@@ -30,7 +32,7 @@ import { WinstonModule } from 'nest-winston';
      */
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, emailConfig],
+      load: [appConfig, databaseConfig, redisConfig, emailConfig, ossConfig],
       envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
       expandVariables: true,
     }),
@@ -166,7 +168,11 @@ import { WinstonModule } from 'nest-winston';
       provide: APP_GUARD,
       useClass: PermissionsGuard,
     },
+    /**
+     * OSS服务
+     */
+    OssService,
   ],
-  exports: [ConfigModule, PrismaModule, CacheManagerModule],
+  exports: [ConfigModule, PrismaModule, CacheManagerModule, OssService],
 })
 export class SharedModule {}

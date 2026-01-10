@@ -9,6 +9,7 @@ import { RoleModule } from './modules/role/role.module';
 import { DictModule } from './modules/dict/dict.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { NoticeModule } from './modules/notice/notice.module';
+import { TagModule } from './modules/tag/tag.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NoticeModule } from './modules/notice/notice.module';
     DictModule,
     MenuModule,
     NoticeModule,
+    TagModule,
   ],
   controllers: [AppController],
   providers: [AppService],
