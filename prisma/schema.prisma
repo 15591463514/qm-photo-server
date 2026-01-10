@@ -330,3 +330,30 @@ model Tag {
   @@index([sort], name: "idx_sort")
   @@map("tags")
 }
+
+// ==================== 地址管理表 ====================
+model Address {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(100) // 地址名称
+  detail      String    @db.VarChar(500) // 详细地址
+  longitude   Decimal   @db.Decimal(10, 7) // 经度
+  latitude    Decimal   @db.Decimal(10, 7) // 纬度
+  province    String?   @db.VarChar(50) // 省
+  city        String?   @db.VarChar(50) // 市
+  district    String?   @db.VarChar(50) // 区/县
+  adcode      String?   @map("adcode") @db.VarChar(20) // 行政区划代码
+  description String?   @db.VarChar(500) // 描述
+  status      Int       @default(1) // 状态：1-启用，0-禁用
+  createBy    Int?      @map("create_by") // 创建者ID
+  createTime  DateTime  @default(now()) @map("create_time") @db.DateTime(0)
+  updateBy    Int?      @map("update_by") // 更新者ID
+  updateTime  DateTime? @updatedAt @map("update_time") @db.DateTime(0)
+
+  @@index([status], name: "idx_status")
+  @@index([province], name: "idx_province")
+  @@index([city], name: "idx_city")
+  @@index([district], name: "idx_district")
+  @@index([createTime], name: "idx_create_time")
+  @@index([province, city, district], name: "idx_province_city_district")
+  @@map("addresses")
+}

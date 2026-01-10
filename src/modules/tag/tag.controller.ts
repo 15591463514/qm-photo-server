@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -30,6 +31,8 @@ import { UpdateTagGroupDto } from './dto/update-tag-group.dto';
 import { QueryTagDto } from './dto/query-tag.dto';
 import { TagResponseDto } from './dto/tag-response.dto';
 import { TagTreeResponseDto } from './dto/tag-tree-response.dto';
+import { ToggleStatusDto } from '@/common/dto/toggle-status.dto';
+import { BatchToggleStatusDto } from '@/common/dto/batch-toggle-status.dto';
 import { ApiResult } from '@/common/decorators/api-result.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -148,6 +151,33 @@ export class TagController {
     @CurrentUser('userId') userId?: number,
   ) {
     return this.tagService.update(id, updateTagDto, userId);
+  }
+
+  @Patch('batch/status')
+  @RequiresPermissions('tag:edit')
+  @ApiOperation({
+    summary: '批量切换标签状态',
+    description: '批量切换标签的启用/禁用状态，单个切换时传递长度为1的数组',
+  })
+  @ApiBody({ type: BatchToggleStatusDto })
+  @ApiResult({
+    status: 200,
+    description: '切换成功',
+    type: Object,
+  })
+  @ApiResult({ status: 400, description: '请求参数错误' })
+  @ApiResult({ status: 401, description: '未授权' })
+  @ApiResult({ status: 404, description: '部分标签不存在' })
+  async batchToggleStatus(
+    @Body() batchToggleStatusDto: BatchToggleStatusDto,
+    @CurrentUser('userId') userId?: number,
+  ) {
+    const count = await this.tagService.batchToggleStatus(
+      batchToggleStatusDto.ids,
+      batchToggleStatusDto.status,
+      userId,
+    );
+    return { count };
   }
 
   @Delete('batch')

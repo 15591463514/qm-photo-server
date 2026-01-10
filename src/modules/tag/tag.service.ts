@@ -308,6 +308,49 @@ export class TagService {
   }
 
   /**
+   * 批量切换标签状态
+   * @param ids 标签ID数组
+   * @param status 新状态（1-启用，0-禁用）
+   * @param userId 更新人ID
+   * @returns 更新的标签数量
+   */
+  async batchToggleStatus(
+    ids: number[],
+    status: number,
+    userId?: number,
+  ): Promise<number> {
+    if (!ids || ids.length === 0) {
+      return 0;
+    }
+
+    // 检查所有标签是否存在
+    const existingTags = await this.prisma.tag.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+
+    const existingIds = existingTags.map((tag) => tag.id);
+    const notFoundIds = ids.filter((id) => !existingIds.includes(id));
+
+    if (notFoundIds.length > 0) {
+      throw new NotFoundException(
+        `以下标签ID不存在: ${notFoundIds.join(', ')}`,
+      );
+    }
+
+    // 批量更新状态
+    const result = await this.prisma.tag.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status,
+        updateBy: userId,
+      },
+    });
+
+    return result.count;
+  }
+
+  /**
    * 删除标签
    * @param id 标签ID
    * @returns 删除的标签信息

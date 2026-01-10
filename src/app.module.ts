@@ -10,6 +10,7 @@ import { DictModule } from './modules/dict/dict.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { NoticeModule } from './modules/notice/notice.module';
 import { TagModule } from './modules/tag/tag.module';
+import { AddressModule } from './modules/address/address.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TagModule } from './modules/tag/tag.module';
     MenuModule,
     NoticeModule,
     TagModule,
+    AddressModule,
   ],
   controllers: [AppController],
   providers: [AppService],

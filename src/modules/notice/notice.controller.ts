@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -40,6 +41,8 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { RequiresPermissions } from '@/common/decorators/permissions.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
+import { ToggleStatusDto } from '@/common/dto/toggle-status.dto';
+import { BatchToggleStatusStringDto } from '@/common/dto/batch-toggle-status-string.dto';
 
 @ApiTags('通知管理')
 @Controller('notice')
@@ -161,22 +164,27 @@ export class NoticeController {
   }
 
   /**
-   * 切换规则状态（启用/禁用）
+   * 批量切换规则状态（启用/禁用）
    */
-  @Put('rules/:id/status')
+  @Patch('rules/batch/status')
   @RequiresPermissions('notice:rules:edit')
   @ApiOperation({
-    summary: '切换规则状态',
-    description: '启用或禁用通知规则',
+    summary: '批量切换规则状态',
+    description: '批量切换规则的启用/禁用状态，单个切换时传递长度为1的数组',
   })
-  @ApiParam({ name: 'id', type: String, description: '规则ID' })
+  @ApiBody({ type: BatchToggleStatusStringDto })
   @ApiResult({
     status: 200,
     description: '状态切换成功',
-    type: RuleResponseDto,
+    type: Object,
   })
-  toggleRuleStatus(@Param('id') id: string) {
-    return this.ruleService.toggleStatus(id);
+  batchToggleRuleStatus(
+    @Body() batchToggleStatusDto: BatchToggleStatusStringDto,
+  ) {
+    return this.ruleService.batchToggleStatus(
+      batchToggleStatusDto.ids,
+      batchToggleStatusDto.status,
+    );
   }
 
   // ==================== 信息管理 ====================

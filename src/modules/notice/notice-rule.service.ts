@@ -167,24 +167,42 @@ export class NoticeRuleService {
   }
 
   /**
-   * 切换规则状态（启用/禁用）
+   * 批量切换规则状态（启用/禁用）
+   * @param ruleIds 规则ID数组
+   * @param status 新状态（1-启用，0-禁用）
+   * @returns 更新的规则数量
    */
-  async toggleStatus(ruleId: string): Promise<RuleResponseDto> {
-    const rule = await this.prisma.notificationRule.findUnique({
-      where: { ruleId: BigInt(ruleId) },
-    });
-
-    if (!rule) {
-      throw new NotFoundException(`通知规则不存在: ${ruleId}`);
+  async batchToggleStatus(ruleIds: string[], status: number): Promise<number> {
+    if (!ruleIds || ruleIds.length === 0) {
+      return 0;
     }
 
-    const newStatus = rule.noticeStatus === 1 ? 0 : 1;
+    // 将字符串ID转换为BigInt
+    const bigIntIds = ruleIds.map((id) => BigInt(id));
 
-    const updated = await this.prisma.notificationRule.update({
-      where: { ruleId: BigInt(ruleId) },
-      data: { noticeStatus: newStatus },
+    // 检查所有规则是否存在
+    const existingRules = await this.prisma.notificationRule.findMany({
+      where: { ruleId: { in: bigIntIds } },
+      select: { ruleId: true },
     });
 
-    return plainToInstance(RuleResponseDto, updated);
+    const existingBigIntIds = existingRules.map((rule) => rule.ruleId);
+    const notFoundIds = bigIntIds.filter(
+      (id) => !existingBigIntIds.includes(id),
+    );
+
+    if (notFoundIds.length > 0) {
+      throw new NotFoundException(
+        `以下规则ID不存在: ${notFoundIds.map(String).join(', ')}`,
+      );
+    }
+
+    // 批量更新状态
+    const result = await this.prisma.notificationRule.updateMany({
+      where: { ruleId: { in: bigIntIds } },
+      data: { noticeStatus: status },
+    });
+
+    return result.count;
   }
 }
